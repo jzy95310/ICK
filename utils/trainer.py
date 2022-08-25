@@ -19,7 +19,7 @@ class Trainer:
     model: torch.nn.Module, the ICK model to be trained
     data_generators: Dict, a dict of data generators for the ICK model where keys must be 'train', 'val', and 'test'
     optimizer: torch.optim.Optimizer, the optimizer for learning the ICK model
-    model_save_dir: str, the directory to save the trained ICK model
+    model_save_dir: str, the directory to save the trained ICK model. If None, the model will not be saved
     model_name: str, the name of the trained ICK model
     loss_fn: torch.nn.modules.loss._Loss, the loss function for optimizing the ICK model
     device: torch.device, the device to train the model on
@@ -28,7 +28,7 @@ class Trainer:
     logger: logging.Logger, an instance of logging.Logger for logging messages, errors, exceptions
     """
     def __init__(self, model: torch.nn.Module, data_generators: Dict, optimizer: torch.optim.Optimizer,
-                 model_save_dir: str, model_name: str = 'model.pt', loss_fn: torch.nn.modules.loss._Loss = torch.nn.MSELoss(), 
+                 model_save_dir: str = None, model_name: str = 'model.pt', loss_fn: torch.nn.modules.loss._Loss = torch.nn.MSELoss(), 
                  device: torch.device = torch.device('cpu'), epochs: int = 100, patience: int = 10, 
                  logger: logging.Logger = logging.getLogger("Trainer")) -> None:
         self.model: torch.nn.Module = model
@@ -124,8 +124,9 @@ class Trainer:
                 if trigger_times >= self.patience:
                     # Trigger early stopping and save the best model
                     self.logger.info("Early stopping - patience reached")
-                    self.logger.info("Saving the best model")
-                    torch.save(best_model_state_dict, os.path.join(self.model_save_dir, self.model_name))
+                    if self.model_save_dir is not None:
+                        self.logger.info("Saving the best model")
+                        torch.save(best_model_state_dict, os.path.join(self.model_save_dir, self.model_name))
                     break
             else:
                 trigger_times = 0
