@@ -14,14 +14,13 @@ class ICK(nn.Module):
 
     Arguments
     --------------
-    num_modalities: int, the total number of modalities (or sources of information)
     kernel_assignment: List, a list of ImplicitKernel or ImplicitNNKernel objects that specify the kernel and
         map the kernel into the latent space
     """
-    def __init__(self, num_modalities: int, kernel_assignment: List, **kwargs):
+    def __init__(self, kernel_assignment: List, **kwargs):
         super(ICK, self).__init__()
-        self.num_modalities: int = num_modalities
         self.kernel_assignment: List = nn.ModuleList(kernel_assignment)
+        self.num_modalities: int = len(self.kernel_assignment)
         self.__dict__.update(kwargs)
         self._validate_inputs()
     

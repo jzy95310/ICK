@@ -3,6 +3,8 @@
 
 import torch
 from torch import nn
+import torchbnn as bnn
+from abc import ABC, abstractmethod
 
 ACTIVATIONS = {
     "relu": nn.ReLU(),
@@ -15,7 +17,7 @@ ACTIVATIONS = {
     "softmax": nn.Softmax(),
 }
 
-class ImplicitNNKernel(nn.Module):
+class ImplicitNNKernel(nn.Module, ABC):
     """
     Parent class of the implicit kernel implied by neural networks
 
@@ -26,6 +28,7 @@ class ImplicitNNKernel(nn.Module):
     activation: str, the activation function to be used in each layer, default to 'relu'
     dropout_ratio: float, the dropout ratio for dropout layers, default to 0.0
     """
+    @abstractmethod
     def __init__(self, latent_feature_dim: int, num_blocks: int, activation: str = 'relu', dropout_ratio: float = 0.0) -> None:
         super(ImplicitNNKernel, self).__init__()
         self.latent_feature_dim: int = latent_feature_dim
@@ -34,6 +37,7 @@ class ImplicitNNKernel(nn.Module):
         self.dropout_ratio: float = dropout_ratio
         self._validate_inputs()
     
+    @abstractmethod
     def _validate_inputs(self) -> None:
         """
         Validate the inputs to the NN-implied implicit kernel class
@@ -43,12 +47,14 @@ class ImplicitNNKernel(nn.Module):
         assert self.activation in ACTIVATIONS, "The activation function should be one of the following: {}".format(ACTIVATIONS.keys())
         assert 0.0 <= self.dropout_ratio <= 1.0, "The dropout ratio should be between 0.0 and 1.0."
     
+    @abstractmethod
     def build_layers(self) -> None:
         """
         Build layers of the NN-implied implicit kernel class
         """
         pass
     
+    @abstractmethod
     def forward(self) -> None:
         """
         Forward pass of the NN-implied implicit kernel class
@@ -62,13 +68,13 @@ class ImplicitDenseNetKernel(ImplicitNNKernel):
     Arguments
     --------------
     input_dim: int, the dimension of input features
-    num_layers: int, the number of dense layers in each HIDDEN block
+    num_layers_per_block: int, the number of dense layers in each HIDDEN block
     num_units: int, the number of units (width) in each HIDDEN dense layer
     """
-    def __init__(self, input_dim: int, latent_feature_dim: int, num_blocks: int, num_layers: int, 
+    def __init__(self, input_dim: int, latent_feature_dim: int, num_blocks: int, num_layers_per_block: int, 
                  num_units: int, activation: str = 'relu', dropout_ratio: float = 0.0) -> None:
         self.input_dim = input_dim
-        self.num_layers: int = num_layers
+        self.num_layers_per_block: int = num_layers_per_block
         self.num_units: int = num_units
         super(ImplicitDenseNetKernel, self).__init__(latent_feature_dim, num_blocks, activation, dropout_ratio)
         self._validate_inputs()
@@ -76,7 +82,7 @@ class ImplicitDenseNetKernel(ImplicitNNKernel):
     
     def _validate_inputs(self) -> None:
         assert self.input_dim > 0, "The number of input features should be positive."
-        assert self.num_layers > 0, "The number of layers should be positive."
+        assert self.num_layers_per_block > 0, "The number of layers per block should be positive."
         assert self.num_units > 0, "The number of units should be positive."
         super(ImplicitDenseNetKernel, self)._validate_inputs()
     
@@ -95,7 +101,7 @@ class ImplicitDenseNetKernel(ImplicitNNKernel):
             for _ in range(self.num_blocks - 1):
                 self.dense_blocks.append(
                     nn.Sequential(
-                        *[nn.Linear(self.num_units, self.num_units) for _ in range(self.num_layers)],
+                        *[nn.Linear(self.num_units, self.num_units) for _ in range(self.num_layers_per_block)],
                         ACTIVATIONS[self.activation],
                         nn.Dropout(self.dropout_ratio)
                     )
@@ -115,6 +121,52 @@ class ImplicitDenseNetKernel(ImplicitNNKernel):
         Get the depth of the DenseNet
         """
         return (self.num_blocks - 1) * self.num_layers + 2
+
+class ImplicitDenseBayesNetKernel(ImplicitDenseNetKernel):
+    """
+    Implicit kernel implied by a dense Bayesian neural network
+
+    Arguments
+    --------------
+    prior_mean: float, the mean of the Gaussian prior of weights
+    prior_std: float, the standard deviation of the Gaussian prior of weights
+    """
+    def __init__(self, input_dim: int, latent_feature_dim: int, num_blocks: int, num_layers_per_block: int, 
+                 num_units: int, activation: str = 'relu', dropout_ratio: float = 0.0, prior_mean: float = 0.0, 
+                 prior_std: float = 1.0) -> None:
+        self.prior_mean = prior_mean
+        self.prior_std = prior_std
+        super(ImplicitDenseBayesNetKernel, self).__init__(input_dim, latent_feature_dim, num_blocks, num_layers_per_block, 
+                                                          num_units, activation, dropout_ratio)
+        self._validate_inputs()
+        self.build_layers()
+    
+    def _validate_inputs(self) -> None:
+        assert self.prior_std > 0.0, "The standard deviation of the Gaussian prior of weights should be positive."
+        super(ImplicitDenseBayesNetKernel, self)._validate_inputs()
+    
+    def build_layers(self) -> None:
+        self.dense_blocks: nn.ModuleList = nn.ModuleList()
+        if self.num_blocks == 0:
+            self.dense_blocks.append(bnn.BayesLinear(self.prior_mean, self.prior_std, self.input_dim, self.latent_feature_dim))
+        else:
+            self.dense_blocks.append(
+                nn.Sequential(
+                    bnn.BayesLinear(self.prior_mean, self.prior_std, self.input_dim, self.num_units),
+                    ACTIVATIONS[self.activation],
+                    nn.Dropout(self.dropout_ratio)
+                )
+            )
+            for _ in range(self.num_blocks - 1):
+                self.dense_blocks.append(
+                    nn.Sequential(
+                        *[bnn.BayesLinear(self.prior_mean, self.prior_std, self.num_units, self.num_units) \
+                            for _ in range(self.num_layers_per_block)],
+                        ACTIVATIONS[self.activation],
+                        nn.Dropout(self.dropout_ratio)
+                    )
+                )
+            self.dense_blocks.append(bnn.BayesLinear(self.prior_mean, self.prior_std, self.num_units, self.latent_feature_dim))
 
 class ImplicitConvNet2DKernel(ImplicitNNKernel):
     """

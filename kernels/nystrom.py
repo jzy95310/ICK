@@ -4,11 +4,12 @@
 import inspect
 from typing import Callable, List, Tuple
 from collections import defaultdict
+from abc import ABC, abstractmethod
 
 import torch
 from torch import nn
 
-class ImplicitKernel(nn.Module):
+class ImplicitKernel(nn.Module, ABC):
     """
     Parent class of the implicit kernel
 
@@ -20,6 +21,7 @@ class ImplicitKernel(nn.Module):
     vals: List[int], a list specifying the value of each parameter
     trainable: List[bool], a list specifying whether each parameter is trainable
     """
+    @abstractmethod
     def __init__(self, kernel_func: Callable, params: List[str], vals: List[float], trainable: List[bool]) -> None:
         super(ImplicitKernel, self).__init__()
         self.kernel_func: Callable = kernel_func
@@ -43,6 +45,7 @@ class ImplicitKernel(nn.Module):
                 else:
                     setattr(self, self.params[i], self.vals[i])
     
+    @abstractmethod
     def _validate_inputs(self) -> None:
         """
         Validate the inputs to the implicit kernel class
@@ -74,6 +77,7 @@ class ImplicitKernel(nn.Module):
                 kernel_params[kwarg] = kwarg_list
         return kernel_params
     
+    @abstractmethod
     def forward(self) -> None:
         """
         Forward pass of the implicit kernel
