@@ -12,6 +12,7 @@ This repository presents a more organized and user-friendly PyTorch implementati
 ## Structure of the Repository
 The structure of this repository is given below:
 - `kernels`: This module contains the implementation details of Nystrom approximation (ICK-y) and Random Fourier Features (ICK-r) as well as the definition of commonly used neural network (NN) architectures and kernel functions.
+  - `bnn.py`: Contains Bayesian NN-implied kernels whose architecture can be customized
   - `kernel_fn.py`: Contains commonly used kernel functions for both Nystrom approximation and Random Fourier Features implementation
   - `nn.py`: Contains NN-implied kernels whose architecture can be customized
   - `nystrom.py`: Contains user-specified implicit kernels based on Nystrom approximation
