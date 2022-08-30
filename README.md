@@ -22,7 +22,7 @@ The structure of this repository is given below:
   - `constants.py`: Contains constant variables used for other scripts in this directory
   - `data_generator.py`: Contains the definition of data loaders for generating multimodal data
   - `helpers.py`: Contains helper functions (e.g. train-validation-test split)
-  - `trainer.py`: Contains a trainer class for fitting ICK and making predictions
+  - `train.py`: Contains a trainer class for fitting ICK and making predictions
 
 ## Tutorial
 Please refer to the notebook `tutorial_1d_regression.ipynb` for a detailed tutorial of fitting ICK to multimodal data in a simple regression task. 
