@@ -37,7 +37,7 @@ class ImplicitNNKernel(nn.Module, ABC):
         assert 0.0 <= self.dropout_ratio <= 1.0, "The dropout ratio should be between 0.0 and 1.0."
     
     @abstractmethod
-    def build_layers(self) -> None:
+    def _build_layers(self) -> None:
         """
         Build layers of the NN-implied implicit kernel class
         """
@@ -47,6 +47,13 @@ class ImplicitNNKernel(nn.Module, ABC):
     def forward(self) -> None:
         """
         Forward pass of the NN-implied implicit kernel class
+        """
+        pass
+
+    @abstractmethod
+    def get_depth(self) -> None:
+        """
+        Get the depth of the neural network
         """
         pass
 
@@ -66,8 +73,10 @@ class ImplicitDenseNetKernel(ImplicitNNKernel):
         self.num_layers_per_block: int = num_layers_per_block
         self.num_units: int = num_units
         super(ImplicitDenseNetKernel, self).__init__(latent_feature_dim, num_blocks, activation, dropout_ratio)
+
+        self.depth = (self.num_blocks - 1) * self.num_layers_per_block + 2
         self._validate_inputs()
-        self.build_layers()
+        self._build_layers()
     
     def _validate_inputs(self) -> None:
         assert self.input_dim > 0, "The number of input features should be positive."
@@ -75,7 +84,7 @@ class ImplicitDenseNetKernel(ImplicitNNKernel):
         assert self.num_units > 0, "The number of units should be positive."
         super(ImplicitDenseNetKernel, self)._validate_inputs()
     
-    def build_layers(self) -> None:
+    def _build_layers(self) -> None:
         self.dense_blocks: nn.ModuleList = nn.ModuleList()
         if self.num_blocks == 0:
             self.dense_blocks.append(nn.Linear(self.input_dim, self.latent_feature_dim))
@@ -98,18 +107,50 @@ class ImplicitDenseNetKernel(ImplicitNNKernel):
             self.dense_blocks.append(nn.Linear(self.num_units, self.latent_feature_dim))
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass of the DenseNet
-        """
         for dense_block in self.dense_blocks:
             x = dense_block(x)
         return x
     
     def get_depth(self) -> int:
+        return self.depth
+    
+    def freeze_blocks(self, num_blocks_to_freeze: int) -> None:
         """
-        Get the depth of the DenseNet
+        Freeze the first num_blocks_to_freeze blocks of the DenseNet
         """
-        return (self.num_blocks - 1) * self.num_layers + 2
+        if num_blocks_to_freeze > len(self.dense_blocks):
+            raise ValueError("The number of blocks to freeze should be smaller than or equal to the number of blocks in the DenseNet.")
+        for i in range(num_blocks_to_freeze):
+            for param in self.dense_blocks[i].parameters():
+                param.requires_grad = False
+    
+    def unfreeze_blocks(self, num_blocks_to_unfreeze: int) -> None:
+        """
+        Unfreeze the first num_blocks_to_unfreeze blocks of the DenseNet
+        """
+        if num_blocks_to_unfreeze > len(self.dense_blocks):
+            raise ValueError("The number of blocks to unfreeze should be smaller than or equal to the number of blocks in the DenseNet.")
+        for i in range(num_blocks_to_unfreeze):
+            for param in self.dense_blocks[i].parameters():
+                param.requires_grad = True
+    
+    def freeze_all_blocks(self) -> None:
+        """
+        Freeze all blocks in the DenseNet
+        """
+        self.freeze_blocks(len(self.dense_blocks))
+    
+    def unfreeze_all_blocks(self) -> None:
+        """
+        Unfreeze all blocks in the DenseNet
+        """
+        self.unfreeze_blocks(len(self.dense_blocks))
+    
+    def freeze_all_blocks_except_last(self) -> None:
+        """
+        Freeze all blocks except the last one of the DenseNet
+        """
+        self.freeze_blocks(len(self.dense_blocks) - 1)
 
 class ImplicitConvNet2DKernel(ImplicitNNKernel):
     """
@@ -143,8 +184,10 @@ class ImplicitConvNet2DKernel(ImplicitNNKernel):
         self.num_hidden_dense_layers = num_hidden_dense_layers
         self.num_dense_units = num_dense_units
         super(ImplicitConvNet2DKernel, self).__init__(latent_feature_dim, num_blocks, activation, dropout_ratio)
+
+        self.depth = self.num_blocks + self.num_hidden_dense_layers + 1
         self._validate_inputs()
-        self.build_layers()
+        self._build_layers()
     
     def _validate_inputs(self) -> None:
         assert self.input_width > 0, "The width of input features should be positive."
@@ -179,7 +222,7 @@ class ImplicitConvNet2DKernel(ImplicitNNKernel):
             nn.Dropout(dropout_ratio)
         )
     
-    def build_layers(self) -> None:
+    def _build_layers(self) -> None:
         self.conv_blocks: nn.ModuleList = nn.ModuleList()
         block_expansion = self.num_intermediate_channels*self.adaptive_avgpool_size**2 if self.num_blocks > 0 else self.in_channels*self.input_width*self.input_height
         if self.num_blocks > 0:
@@ -211,18 +254,56 @@ class ImplicitConvNet2DKernel(ImplicitNNKernel):
             )
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass of the 2D ConvNet
-        """
         for conv_block in self.conv_blocks:
             x = conv_block(x)
         return x
     
     def get_depth(self) -> int:
+        return self.depth
+    
+    def freeze_blocks(self, num_blocks_to_freeze: int) -> None:
         """
-        Get the depth of the 2D ConvNet
+        Freeze the first num_blocks_to_freeze blocks of the 2D ConvNet
         """
-        return self.num_blocks + self.num_hidden_dense_layers + 1
+        if num_blocks_to_freeze > len(self.conv_blocks):
+            raise ValueError("The number of blocks to freeze should be smaller than or equal to the number of blocks in the 2D ConvNet.")
+        for i in range(num_blocks_to_freeze):
+            for param in self.conv_blocks[i].parameters():
+                param.requires_grad = False
+    
+    def unfreeze_blocks(self, num_blocks_to_unfreeze: int) -> None:
+        """
+        Unfreeze the first num_blocks_to_unfreeze blocks of the 2D ConvNet
+        """
+        if num_blocks_to_unfreeze > len(self.conv_blocks):
+            raise ValueError("The number of blocks to unfreeze should be smaller than or equal to the number of blocks in the 2D ConvNet.")
+        for i in range(num_blocks_to_unfreeze):
+            for param in self.conv_blocks[i].parameters():
+                param.requires_grad = True
+    
+    def freeze_all_blocks(self) -> None:
+        """
+        Freeze all blocks in the 2D ConvNet
+        """
+        self.freeze_blocks(len(self.conv_blocks))
+    
+    def unfreeze_all_blocks(self) -> None:
+        """
+        Unfreeze all blocks in the 2D ConvNet
+        """
+        self.unfreeze_blocks(len(self.conv_blocks))
+    
+    def freeze_all_blocks_except_last(self) -> None:
+        """
+        Freeze all blocks except the last one of the DenseNet
+        """
+        self.freeze_blocks(len(self.conv_blocks) - 1)
+    
+    def freeze_all_conv_blocks(self) -> None:
+        """
+        Freeze all convolutional blocks of the 2D ConvNet
+        """
+        self.freeze_blocks(self.num_blocks)
 
 # ########################################################################################
 # MIT License

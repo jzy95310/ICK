@@ -24,13 +24,13 @@ class ImplicitDenseBayesNetKernel(ImplicitDenseNetKernel):
         super(ImplicitDenseBayesNetKernel, self).__init__(input_dim, latent_feature_dim, num_blocks, num_layers_per_block, 
                                                           num_units, activation, dropout_ratio)
         self._validate_inputs()
-        self.build_layers()
+        self._build_layers()
     
     def _validate_inputs(self) -> None:
         assert self.prior_std > 0.0, "The standard deviation of the Gaussian prior of weights should be positive."
         super(ImplicitDenseBayesNetKernel, self)._validate_inputs()
     
-    def build_layers(self) -> None:
+    def _build_layers(self) -> None:
         self.dense_blocks: nn.ModuleList = nn.ModuleList()
         if self.num_blocks == 0:
             self.dense_blocks.append(bnn.BayesLinear(self.prior_mean, self.prior_std, self.input_dim, self.latent_feature_dim))
