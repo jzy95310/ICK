@@ -1,38 +1,48 @@
 # ick.py: a file containing the definition of Implicit Composite Kernel (ICK) model for regression
 # SEE LICENSE STATEMENT AT THE END OF THE FILE
 
-from typing import List
-from kernels.nn import ImplicitNNKernel
-from kernels.nystrom import ImplicitKernel
+from typing import List, Dict
+from kernels.bnn import *
+from kernels.nn import *
+from kernels.nystrom import *
+from kernels.rff import *
 
 import torch
 from torch import nn
 
 class ICK(nn.Module):
     """
-    Parent class of the Implicit Composite Kernel (ICK)
+    Class definition of the Implicit Composite Kernel (ICK)
+    Please see the notebook tutorial_1d_regression.ipynb for more details on the usage of ICK
 
     Arguments
     --------------
-    kernel_assignment: List, a list of ImplicitKernel or ImplicitNNKernel objects that specify the kernel and
-        map the kernel into the latent space
+    kernel_assignment: List[str], a list of strings indicating the type of kernel to be used for each modality
+    kernel_params: Dict, a dictionary containing the parameters of the kernels
     """
-    def __init__(self, kernel_assignment: List, **kwargs):
+    def __init__(self, kernel_assignment: List[str], kernel_params: Dict) -> None:
         super(ICK, self).__init__()
-        self.kernel_assignment: List = nn.ModuleList(kernel_assignment)
+        self.kernel_assignment: List[str] = kernel_assignment
+        self.kernel_params: Dict = kernel_params
         self.num_modalities: int = len(self.kernel_assignment)
-        self.__dict__.update(kwargs)
         self._validate_inputs()
-    
+        self._build_kernels()
+
     def _validate_inputs(self) -> None:
         """
         Validate the inputs to ICK
         """
         assert self.num_modalities > 0, "The number of modalities (or sources of information) should be greater than 0."
-        assert len(self.kernel_assignment) == self.num_modalities, "The length of the kernel assignment should be equal to num_modalities."
-        for kernel in self.kernel_assignment:
-            if not (isinstance(kernel, ImplicitKernel) or isinstance(kernel, ImplicitNNKernel)):
-                raise ValueError("The kernel assignment should be a list of ImplicitKernel or ImplicitNNKernel objects.")
+        for kernel_name in self.kernel_assignment:
+            assert kernel_name in self.kernel_params.keys(), "The kernel name {} has no parameters specified.".format(kernel_name)
+    
+    def _build_kernels(self) -> None:
+        """
+        Build the kernels for each modality
+        """
+        self.kernels = nn.ModuleList()
+        for i in range(self.num_modalities):
+            self.kernels.append(eval(self.kernel_assignment[i])(**self.kernel_params[self.kernel_assignment[i]]))
     
     def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
         """
@@ -42,9 +52,9 @@ class ICK(nn.Module):
         assert len(x) == self.num_modalities, "The length of the input should be equal to num_modalities."
         for i in range(len(x)):
             if 'latent_features' not in locals():
-                latent_features = torch.unsqueeze(self.kernel_assignment[i](x[i]), dim=0)
+                latent_features = torch.unsqueeze(self.kernels[i](x[i]), dim=0)
             else:
-                new_latent_feature = torch.unsqueeze(self.kernel_assignment[i](x[i]), dim=0)
+                new_latent_feature = torch.unsqueeze(self.kernels[i](x[i]), dim=0)
                 latent_features = torch.cat((latent_features, new_latent_feature), dim=0)
         return torch.sum(torch.prod(latent_features,dim=0),dim=1)
 

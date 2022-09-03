@@ -1,10 +1,11 @@
-# helpers.py: a file containing helper functions for data processing and training
+# helpers.py: a file containing helper functions for data processing, model creation, and training
 # SEE LICENSE STATEMENT AT THE END OF THE FILE
 
 import numpy as np
 from typing import Dict, Tuple, List
 from .constants import *
 from .data_generator import create_ick_data_generator
+from model.ick import ICK
 
 def train_val_test_split(x: List[np.ndarray], y: np.ndarray, train_range: Tuple = (0.0,0.5), 
                          val_range: Tuple = (0.5,0.6), test_range: Tuple = (0.6,1.0), 
@@ -62,6 +63,21 @@ def create_generators_from_data(x_train: List[np.ndarray], y_train: np.ndarray, 
     test_data_generator = create_ick_data_generator(x_test, y_test, shuffle_dataloader=False, batch_size=test_batch_size)
     
     return {TRAIN: train_data_generator, VAL: val_data_generator, TEST: test_data_generator}
+
+def build_ick_ensemble(kernel_assignment: List[str], kernel_params: Dict, num_estimators: int):
+    """
+    Build an ensemble of ICK models
+    
+    Arguments
+    --------------
+    kernel_assignment: List[str], the assignment of kernels to each base ICK model
+    kernel_params: Dict, the parameters of the kernels
+    num_estimators: int, the number of estimators in the ensemble
+    """
+    ensemble = []
+    for _ in range(num_estimators):
+        ensemble.append(ICK(kernel_assignment, kernel_params))
+    return ensemble
 
 # ########################################################################################
 # MIT License
