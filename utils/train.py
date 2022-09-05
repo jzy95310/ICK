@@ -69,8 +69,6 @@ class BaseTrainer(ABC):
         """
         if not isinstance(self.data_generators, Dict):
             raise TypeError("data_generators must be a dictionary.")
-        if not all([type(x) is torch.utils.data.DataLoader for x in self.data_generators.values()]):
-            raise TypeError("data_generators\' values must be instances of torch.utils.data.DataLoader")
         if not set(self.data_generators.keys()).issubset({TRAIN, VAL, TEST}):
             raise ValueError("The keys of data_generators must be a subset of {\'train\', \'val\', and \'test\'}")
         if self.optim not in OPTIMIZERS:

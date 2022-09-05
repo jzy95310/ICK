@@ -67,21 +67,6 @@ def create_generators_from_data(x_train: List[np.ndarray], y_train: np.ndarray, 
     
     return {TRAIN: train_data_generator, VAL: val_data_generator, TEST: test_data_generator}
 
-def build_ick_ensemble(kernel_assignment: List[str], kernel_params: Dict, num_estimators: int):
-    """
-    Build an ensemble of ICK models
-    
-    Arguments
-    --------------
-    kernel_assignment: List[str], the assignment of kernels to each base ICK model
-    kernel_params: Dict, the parameters of the kernels
-    num_estimators: int, the number of estimators in the ensemble
-    """
-    ensemble = []
-    for _ in range(num_estimators):
-        ensemble.append(ICK(kernel_assignment, kernel_params))
-    return ensemble
-
 # ########################################################################################
 # MIT License
 
