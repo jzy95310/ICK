@@ -2,7 +2,7 @@
 # SEE LICENSE STATEMENT AT THE END OF THE FILE
 
 import numpy as np
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Union
 from .constants import *
 from .data_generator import create_ick_data_generator
 from model.ick import ICK
@@ -45,8 +45,8 @@ def train_val_test_split(x: List[np.ndarray], y: np.ndarray, train_range: Tuple 
         y[int(test_range[0]*data_size):int(test_range[1]*data_size)]
     return x_train, y_train, x_val, y_val, x_test, y_test
 
-def create_generators_from_data(x_train: List[np.ndarray], y_train: np.ndarray, x_val: List[np.ndarray], 
-                                y_val: np.ndarray, x_test: List[np.ndarray], y_test: np.ndarray, 
+def create_generators_from_data(x_train: List[np.ndarray], y_train: np.ndarray, x_val: Union[List[np.ndarray], None], 
+                                y_val: Union[np.ndarray, None], x_test: List[np.ndarray], y_test: np.ndarray, 
                                 train_batch_size: int = 50, val_batch_size: int = 300, 
                                 test_batch_size: int = 300) -> Dict:
     """
@@ -59,8 +59,11 @@ def create_generators_from_data(x_train: List[np.ndarray], y_train: np.ndarray, 
     test_batch_size: int, batch size of the data generator for testing
     """
     train_data_generator = create_ick_data_generator(x_train, y_train, shuffle_dataloader=True, batch_size=train_batch_size)
-    val_data_generator = create_ick_data_generator(x_val, y_val, shuffle_dataloader=False, batch_size=val_batch_size)
     test_data_generator = create_ick_data_generator(x_test, y_test, shuffle_dataloader=False, batch_size=test_batch_size)
+    if x_val is not None and y_val is not None:
+        val_data_generator = create_ick_data_generator(x_val, y_val, shuffle_dataloader=False, batch_size=val_batch_size)
+    else:
+        val_data_generator = None
     
     return {TRAIN: train_data_generator, VAL: val_data_generator, TEST: test_data_generator}
 
