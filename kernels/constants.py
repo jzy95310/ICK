@@ -1,12 +1,20 @@
-from torch import nn
+import torch
+
+class Erf(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return torch.erf(x)
 
 ACTIVATIONS = {
-    "relu": nn.ReLU(),
-    "sigmoid": nn.Sigmoid(),
-    "tanh": nn.Tanh(),
-    "leaky_relu": nn.LeakyReLU(),
-    "elu": nn.ELU(),
-    "selu": nn.SELU(),
-    "softplus": nn.Softplus(),
-    "softmax": nn.Softmax(),
+    "relu": torch.nn.ReLU(),
+    "sigmoid": torch.nn.Sigmoid(),
+    "tanh": torch.nn.Tanh(),
+    "leaky_relu": torch.nn.LeakyReLU(),
+    "elu": torch.nn.ELU(),
+    "selu": torch.nn.SELU(),
+    "softplus": torch.nn.Softplus(),
+    "softmax": torch.nn.Softmax(),
+    "erf": Erf(),
 }
