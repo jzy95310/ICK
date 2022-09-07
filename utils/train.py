@@ -169,6 +169,8 @@ class Trainer(BaseTrainer):
                 if trigger_times >= self.patience:
                     # Trigger early stopping and save the best model
                     self.logger.info("Early stopping - patience reached")
+                    self.logger.info("Restoring the best model")
+                    self.model.load_state_dict(best_model_state_dict)
                     if self.model_save_dir is not None:
                         self.logger.info("Saving the best model")
                         torch.save(best_model_state_dict, os.path.join(self.model_save_dir, self.model_name))
@@ -278,6 +280,8 @@ class BayesTrainer(BaseTrainer):
                 if trigger_times >= self.patience:
                     # Trigger early stopping and save the best model
                     self.logger.info("Early stopping - patience reached")
+                    self.logger.info("Restoring the best model")
+                    self.model.load_state_dict(best_model_state_dict)
                     if self.model_save_dir is not None:
                         self.logger.info("Saving the best model")
                         torch.save(best_model_state_dict, os.path.join(self.model_save_dir, self.model_name))
@@ -399,6 +403,9 @@ class EnsembleTrainer(BaseTrainer):
                     if trigger_times >= self.patience:
                         # Trigger early stopping and save the best ensemble
                         self.logger.info("Early stopping - patience reached")
+                        self.logger.info("Restoring the best model")
+                        for i in range(len(self.model)):
+                            self.model[i].load_state_dict(best_model_state_dict['model_'+str(i)])
                         if self.model_save_dir is not None:
                             self.logger.info("Saving the best ensemble")
                             torch.save(best_model_state_dict, os.path.join(self.model_save_dir, self.model_name))
