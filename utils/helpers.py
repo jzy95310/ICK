@@ -7,7 +7,7 @@ from .constants import *
 from .data_generator import create_ick_data_generator
 from model.ick import ICK
 
-def train_val_test_split(x: List[np.ndarray], y: np.ndarray, train_range: Tuple = (0.0,0.5), 
+def train_val_test_split(x: Union[List[np.ndarray], np.ndarray], y: np.ndarray, train_range: Tuple = (0.0,0.5), 
                          val_range: Tuple = (0.5,0.6), test_range: Tuple = (0.6,1.0), 
                          shuffle_data: bool = False, random_seed: int = 2020) -> Tuple:
     """
@@ -15,7 +15,8 @@ def train_val_test_split(x: List[np.ndarray], y: np.ndarray, train_range: Tuple 
     
     Arguments
     --------------
-    x: List[np.ndarray], a list of tensors containing information from multiple sources
+    x: Union[List[np.ndarray], np.ndarray], a list of tensors containing information from multiple sources or
+        a single tensor containing information from a single source
     y: np.ndarray, a tensor containing the targets/labels for prediction
     train_range: Tuple, the range of the data to be used for training
     val_range: Tuple, the range of the data to be used for validation
@@ -37,16 +38,24 @@ def train_val_test_split(x: List[np.ndarray], y: np.ndarray, train_range: Tuple 
             np.random.seed(random_seed)
             np.random.shuffle(item)
     data_size = len(y)
-    x_train, y_train = list(map(lambda item: item[int(train_range[0]*data_size):int(train_range[1]*data_size)], x)), \
-        y[int(train_range[0]*data_size):int(train_range[1]*data_size)]
-    x_val, y_val = list(map(lambda item: item[int(val_range[0]*data_size):int(val_range[1]*data_size)], x)), \
-        y[int(val_range[0]*data_size):int(val_range[1]*data_size)]
-    x_test, y_test = list(map(lambda item: item[int(test_range[0]*data_size):int(test_range[1]*data_size)], x)), \
-        y[int(test_range[0]*data_size):int(test_range[1]*data_size)]
+
+    if isinstance(x, list):
+        x_train = list(map(lambda item: item[int(train_range[0]*data_size):int(train_range[1]*data_size)], x))
+        x_val = list(map(lambda item: item[int(val_range[0]*data_size):int(val_range[1]*data_size)], x))
+        x_test = list(map(lambda item: item[int(test_range[0]*data_size):int(test_range[1]*data_size)], x))
+    else:
+        x_train = x[int(train_range[0]*data_size):int(train_range[1]*data_size)]
+        x_val = x[int(val_range[0]*data_size):int(val_range[1]*data_size)]
+        x_test = x[int(test_range[0]*data_size):int(test_range[1]*data_size)]
+    y_train = y[int(train_range[0]*data_size):int(train_range[1]*data_size)]
+    y_val = y[int(val_range[0]*data_size):int(val_range[1]*data_size)]
+    y_test = y[int(test_range[0]*data_size):int(test_range[1]*data_size)]
+
     return x_train, y_train, x_val, y_val, x_test, y_test
 
-def create_generators_from_data(x_train: List[np.ndarray], y_train: np.ndarray, x_val: Union[List[np.ndarray], None], 
-                                y_val: Union[np.ndarray, None], x_test: List[np.ndarray], y_test: np.ndarray, 
+def create_generators_from_data(x_train: Union[List[np.ndarray], np.ndarray], y_train: np.ndarray, 
+                                x_val: Union[List[np.ndarray], np.ndarray, None], y_val: Union[np.ndarray, None], 
+                                x_test: Union[List[np.ndarray], np.ndarray], y_test: np.ndarray, 
                                 train_batch_size: int = 50, val_batch_size: int = 300, 
                                 test_batch_size: int = 300) -> Dict:
     """

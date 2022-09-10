@@ -2,7 +2,7 @@
 # SEE LICENSE STATEMENT AT THE END OF THE FILE
 
 import numpy as np
-from typing import List
+from typing import List, Union
 
 import torch
 from torch.utils.data import DataLoader
@@ -14,14 +14,15 @@ class DataGenerator(Dataset):
 
     Arguments
     --------------
-    x: List[np.ndarray], an input tensor containing information from multiple sources
+    x: Union[List[np.ndarray], np.ndarray], a list of tensors containing information from multiple sources or
+        a single tensor containing information from a single source
     y: np.ndarray, a tensor containing the targets/labels for prediction
     dtype: str, the data type of the input tensors
     shuffle: bool, whether to shuffle the data
     random_seed: int, the random seed for shuffling the data
     """
-    def __init__(self, x: List[np.ndarray], y: np.ndarray, dtype: str = 'float32') -> None:
-        self.x: List[np.ndarray] = x
+    def __init__(self, x: Union[List[np.ndarray], np.ndarray], y: np.ndarray, dtype: str = 'float32') -> None:
+        self.x: Union[List[np.ndarray], np.ndarray] = x
         self.y: np.ndarray = y
         self.dtype: str = dtype
         self._validate_and_preprocess_inputs()
@@ -30,28 +31,35 @@ class DataGenerator(Dataset):
         """
         Validate and preprocess the inputs to the data generator
         """
-        if not isinstance(self.x,List):
-            raise TypeError("The input array must be a List even if it only contains one source of information.")
+        if not isinstance(self.x,List) and not isinstance(self.x,np.ndarray):
+            raise TypeError("x must be a list of numpy arrays or a single numpy array")
         if len(set(map(len,self.x+[self.y]))) > 1:
             raise ValueError("All sources of information (including the target) must have the same number of samples.")
         # Make sure all sources of information in x are at least 2D and in correct data type
-        self.x = tuple(map(lambda item: item.reshape(-1,1).astype(self.dtype) if len(item.shape) == 1 else item.astype(self.dtype), self.x))
+        if isinstance(self.x, list):
+            self.x = tuple(map(lambda item: item.reshape(-1,1).astype(self.dtype) if len(item.shape) == 1 else item.astype(self.dtype), self.x))
+        else:
+            self.x = self.x.reshape(-1,1).astype(self.dtype) if len(self.x.shape) == 1 else self.x.astype(self.dtype)
 
     def __len__(self) -> int:
-        return len(self.x[0])
+        return len(self.x[0]) if isinstance(self.x, list) else len(self.x)
 
     def __getitem__(self, idx) -> tuple:
         if torch.is_tensor(idx):
             idx = idx.tolist()
-        return [item[idx] for item in self.x], self.y[idx]
+        if isinstance(self.x, tuple):
+            return [item[idx] for item in self.x], self.y[idx]
+        else:
+            return self.x[idx], self.y[idx]
 
-def create_ick_data_generator(x: List[np.ndarray], y: np.ndarray, shuffle_dataloader: bool, batch_size: int):
+def create_ick_data_generator(x: Union[List[np.ndarray], np.ndarray], y: np.ndarray, shuffle_dataloader: bool, batch_size: int):
     """
     Function to create a data generator for ICK
 
     Arguments:
     --------------
-    x: List[np.ndarray], a list of tensors containing information from multiple sources
+    x: Union[List[np.ndarray], np.ndarray], a list of tensors containing information from multiple sources or
+        a single tensor containing information from a single source
     y: np.ndarray, a tensor containing the targets/labels for prediction
     shuffle_dataloader: bool, whether to shuffle the data loader
     batch_size: int, batch size of the data generator

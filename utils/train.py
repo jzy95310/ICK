@@ -56,11 +56,14 @@ class BaseTrainer(ABC):
         self._validate_inputs()
         self._set_optimizer()
     
-    def _assign_device_to_data(self, data: List, target: torch.Tensor) -> Tuple:
+    def _assign_device_to_data(self, data: Union[List, torch.Tensor], target: torch.Tensor) -> Tuple:
         """
         Assign the device to the data and target
         """
-        data = list(map(lambda x: x.to(self.device), data))
+        if isinstance(data, list):
+            data = list(map(lambda x: x.to(self.device), data))
+        else:
+            data = data.to(self.device)
         target = target.to(self.device)
         return data, target
     
