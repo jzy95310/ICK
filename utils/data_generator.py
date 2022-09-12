@@ -42,7 +42,7 @@ class DataGenerator(Dataset):
             self.x = self.x.reshape(-1,1).astype(self.dtype) if len(self.x.shape) == 1 else self.x.astype(self.dtype)
 
     def __len__(self) -> int:
-        return len(self.x[0]) if isinstance(self.x, list) else len(self.x)
+        return len(self.x[0]) if isinstance(self.x, tuple) else len(self.x)
 
     def __getitem__(self, idx) -> tuple:
         if torch.is_tensor(idx):
