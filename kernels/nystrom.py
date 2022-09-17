@@ -103,6 +103,7 @@ class ImplicitNystromKernel(ImplicitKernel):
         self.alpha: float = alpha
         self.num_inducing_points: int = num_inducing_points
         self.nys_space: List[Tuple(float)] = nys_space
+        self.features: torch.Tensor = None
         super(ImplicitNystromKernel, self).__init__(kernel_func, params, vals, trainable)
         self._validate_inputs()
     
@@ -139,8 +140,14 @@ class ImplicitNystromKernel(ImplicitKernel):
         Ktti = torch.inverse(Ktt+self.alpha*torch.eye(self.num_inducing_points).to(device)).double()
         Kcholt = torch.linalg.cholesky(Ktti).transpose(-2, -1).conj()
         Kxt = self.kernel_func(input_feature,inducing_points,**kernel_params).double() # shape: (N,m)
-        features = torch.mm(Kxt,Kcholt)
-        return features
+        self.features = torch.mm(Kxt,Kcholt)
+        return self.features
+    
+    def get_features(self) -> torch.Tensor:
+        """
+        Get the latent representation of the input feature
+        """
+        return self.features
 
 # ########################################################################################
 # MIT License
