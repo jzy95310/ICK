@@ -57,46 +57,6 @@ class ICK(nn.Module):
                 new_latent_feature = torch.unsqueeze(self.kernels[i](x[i]), dim=0)
                 latent_features = torch.cat((latent_features, new_latent_feature), dim=0)
         return torch.sum(torch.prod(latent_features,dim=0),dim=1)
-    
-    def freeze_nn_kernel_blocks(self, kernel_name: str, num_blocks_to_freeze: Union[int, str]) -> None:
-        """
-        Freeze the specified number of blocks of the neural network implied kernel
-
-        Arguments
-        --------------
-        kernel_name: str, the name of the neural network implied kernel
-        num_blocks_to_freeze: Union[int, str], the number of blocks to freeze, can also be set to 'all' or 'last'
-            where 'all' freezes all the blocks and 'last' freezes all blocks except the last block
-        """
-        assert kernel_name in self.kernel_assignment, "The kernel name {} is not in the kernel assignment.".format(kernel_name)
-        assert issubclass(eval(kernel_name), ImplicitNNKernel), "The kernel {} is not a neural network implied kernel.".format(kernel_name)
-        if num_blocks_to_freeze not in ['all', 'last'] and not isinstance(num_blocks_to_freeze, int):
-            raise ValueError("num_blocks_to_freeze should be either an integer or 'all' or 'last'.")
-        if num_blocks_to_freeze == 'all':
-            self.kernels[self.kernel_assignment.index(kernel_name)].freeze_all_blocks()
-        elif num_blocks_to_freeze == 'last':
-            self.kernels[self.kernel_assignment.index(kernel_name)].freeze_all_blocks_except_last()
-        else:
-            self.kernels[self.kernel_assignment.index(kernel_name)].freeze_blocks(num_blocks_to_freeze)
-    
-    def unfreeze_nn_kernel_blocks(self, kernel_name: str, num_blocks_to_unfreeze: Union[int, str]) -> None:
-        """
-        Unfreeze the specified number of blocks of the neural network implied kernel
-
-        Arguments
-        --------------
-        kernel_name: str, the name of the neural network implied kernel
-        num_blocks_to_unfreeze: Union[int, str], the number of blocks to unfreeze, can also be set to 'all'
-            where 'all' unfreezes all the blocks
-        """
-        assert kernel_name in self.kernel_assignment, "The kernel name {} is not in the kernel assignment.".format(kernel_name)
-        assert issubclass(eval(kernel_name), ImplicitNNKernel), "The kernel {} is not a neural network implied kernel.".format(kernel_name)
-        if num_blocks_to_unfreeze not in ['all'] and not isinstance(num_blocks_to_unfreeze, int):
-            raise ValueError("num_blocks_to_unfreeze should be either an integer or 'all'.")
-        if num_blocks_to_unfreeze == 'all':
-            self.kernels[self.kernel_assignment.index(kernel_name)].unfreeze_all_blocks()
-        else:
-            self.kernels[self.kernel_assignment.index(kernel_name)].unfreeze_blocks(num_blocks_to_unfreeze)
 
 # ########################################################################################
 # MIT License
