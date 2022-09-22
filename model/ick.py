@@ -61,6 +61,11 @@ class ICK(nn.Module):
 class BayesianICK(ICK):
     """
     Class definition of the Bayesian Implicit Composite Kernel (Bayesian ICK)
+
+    Note
+    --------------
+    This version of Bayesian ICK is specifically designed for the case when the model is trained using Gaussian
+    negative log-likelihood loss.
     """
     def __init__(self, kernel_assignment: List[str], kernel_params: Dict) -> None:
         super(BayesianICK, self).__init__(kernel_assignment, kernel_params)
