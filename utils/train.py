@@ -215,7 +215,7 @@ class Trainer(BaseTrainer):
                 y_test_true = torch.cat((y_test_true, target), dim=0)
         return y_test_pred.detach().cpu().numpy(), y_test_true.detach().cpu().numpy()
 
-class BayesTrainer(BaseTrainer):
+class VariationalBayesTrainer(BaseTrainer):
     """
     Class for training the Bayesian variant of ICK model
 
@@ -229,7 +229,7 @@ class BayesTrainer(BaseTrainer):
                  patience: int = 10, kl_weight: float = 0.1) -> None:
         self.kl_loss = bnn.BKLLoss(reduction='mean', last_layer_only=False)
         self.kl_weight: float = kl_weight
-        super(BayesTrainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, model_save_dir, model_name, 
+        super(VariationalBayesTrainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, model_save_dir, model_name, 
                                            loss_fn, device, epochs, patience, logger)
         self._validate_inputs()
     
@@ -237,7 +237,7 @@ class BayesTrainer(BaseTrainer):
         if not isinstance(self.model, torch.nn.Module):
             raise TypeError("The model must be an instance of torch.nn.Module")
         assert self.kl_weight >= 0, "kl_weight must be non-negative."
-        super(BayesTrainer, self)._validate_inputs()
+        super(VariationalBayesTrainer, self)._validate_inputs()
     
     def train(self) -> None:
         """
@@ -366,14 +366,25 @@ class EnsembleTrainer(BaseTrainer):
             # Zero the gradients
             self.optimizers[base_learner_idx].zero_grad()
             # Forward and backward pass
-            output = self.model[base_learner_idx](data).float()
-            loss = self.loss_fn(output, target)
+            if isinstance(self.loss_fn, torch.nn.GaussianNLLLoss):
+                mean, var = self.model[base_learner_idx](data)
+                loss = self.loss_fn(mean.float(), target, var.float())
+            else:
+                output = self.model[base_learner_idx](data).float()
+                loss = self.loss_fn(output, target)
             loss.backward()
             self.optimizers[base_learner_idx].step()
             # Record the predictions
-            y_train_pred = torch.cat((y_train_pred, output), dim=0)
+            if isinstance(self.loss_fn, torch.nn.GaussianNLLLoss):
+                y_train_pred_mean = torch.cat((y_train_pred, mean.float()), dim=0)
+                y_train_pred_var = torch.cat((y_train_pred, var.float()), dim=0)
+            else:
+                y_train_pred = torch.cat((y_train_pred, output), dim=0)
             y_train_true = torch.cat((y_train_true, target), dim=0)
-        train_loss = self.loss_fn(y_train_pred, y_train_true).item()
+        if isinstance(self.loss_fn, torch.nn.GaussianNLLLoss):
+            train_loss = self.loss_fn(y_train_pred_mean, y_train_true, y_train_pred_var).item()
+        else:
+            train_loss = self.loss_fn(y_train_pred, y_train_true).item()
         return train_loss
     
     def train(self) -> None:
@@ -424,7 +435,11 @@ class EnsembleTrainer(BaseTrainer):
         """
         Evaluate the ensemble of ICK models on the test data
         """
-        y_test_pred = [torch.empty(0).to(self.device) for _ in range(len(self.model))]
+        if isinstance(self.loss_fn, torch.nn.GaussianNLLLoss):
+            mean_pred = [torch.empty(0).to(self.device) for _ in range(len(self.model))]
+            var_pred = [torch.empty(0).to(self.device) for _ in range(len(self.model))]
+        else:
+            y_test_pred = [torch.empty(0).to(self.device) for _ in range(len(self.model))]
         y_test_true = torch.empty(0).to(self.device)
 
         with torch.no_grad():
@@ -432,12 +447,22 @@ class EnsembleTrainer(BaseTrainer):
                 self.model[i].eval()
                 for batch in self.data_generators[TEST]:
                     data, target = self._assign_device_to_data(batch[0], batch[1])
-                    output = self.model[i](data).float()
-                    y_test_pred[i] = torch.cat((y_test_pred[i], output), dim=0)
+                    if isinstance(self.loss_fn, torch.nn.GaussianNLLLoss):
+                        mean, var = self.model[i](data)
+                        mean_pred[i] = torch.cat((mean_pred[i], mean.float()), dim=0)
+                        var_pred[i] = torch.cat((var_pred[i], var.float()), dim=0)
+                    else:
+                        output = self.model[i](data).float()
+                        y_test_pred[i] = torch.cat((y_test_pred[i], output), dim=0)
                     if i == 0:
                         y_test_true = torch.cat((y_test_true, target), dim=0)
-        y_test_pred_mean = torch.mean(torch.stack(y_test_pred, dim=0), dim=0)
-        y_test_pred_std = torch.std(torch.stack(y_test_pred, dim=0), dim=0)
+        if isinstance(self.loss_fn, torch.nn.GaussianNLLLoss):
+            # Compute the mean and variance of the predictions as a Gaussian mixture
+            y_test_pred_mean = torch.mean(torch.stack(mean_pred, dim=0), dim=0)
+            y_test_pred_std = torch.sqrt(torch.mean(torch.stack(mean_pred, dim=0)**2 + torch.stack(var_pred, dim=0), dim=0) - y_test_pred_mean**2)
+        else:
+            y_test_pred_mean = torch.mean(torch.stack(y_test_pred, dim=0), dim=0)
+            y_test_pred_std = torch.std(torch.stack(y_test_pred, dim=0), dim=0)
         return y_test_pred_mean.detach().cpu().numpy(), y_test_pred_std.detach().cpu().numpy(), y_test_true.detach().cpu().numpy()
 
 # ########################################################################################

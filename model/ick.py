@@ -58,6 +58,38 @@ class ICK(nn.Module):
                 latent_features = torch.cat((latent_features, new_latent_feature), dim=0)
         return torch.sum(torch.prod(latent_features,dim=0),dim=1)
 
+class BayesianICK(ICK):
+    """
+    Class definition of the Bayesian Implicit Composite Kernel (Bayesian ICK)
+    """
+    def __init__(self, kernel_assignment: List[str], kernel_params: Dict) -> None:
+        super(BayesianICK, self).__init__(kernel_assignment, kernel_params)
+        kernel_1_attr = list(self.kernel_params.values())[0]
+        latent_feature_dim = kernel_1_attr.get('latent_feature_dim', kernel_1_attr.get('num_inducing_points', -1))
+        assert latent_feature_dim > 0, "The latent feature dimension should be greater than 0."
+        self.fc = nn.Linear(latent_feature_dim, 1)
+        self.softplus = nn.Softplus()
+    
+    def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
+        """
+        Forward pass of Bayesian ICK:
+        Returns a tuple of two outputs for Gaussian mean and variance where mean is the inner product between 
+        latent representations and variance is directly modeled by the ImplicitNNKernel
+        """
+        assert len(x) == self.num_modalities, "The length of the input should be equal to num_modalities."
+        for i in range(len(x)):
+            if 'latent_features' not in locals():
+                latent_features = torch.unsqueeze(self.kernels[i](x[i]), dim=0)
+            else:
+                new_latent_feature = torch.unsqueeze(self.kernels[i](x[i]), dim=0)
+                latent_features = torch.cat((latent_features, new_latent_feature), dim=0)
+        mean = torch.sum(torch.prod(latent_features,dim=0),dim=1)
+        for i in range(len(self.kernels)):
+            if isinstance(self.kernels[i], ImplicitNNKernel):
+                var = torch.squeeze(self.softplus(self.fc(latent_features[i].float())))
+                break
+        return mean, var if 'var' in locals() else mean
+
 # ########################################################################################
 # MIT License
 
