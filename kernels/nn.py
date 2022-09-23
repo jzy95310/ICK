@@ -1,6 +1,7 @@
 # nn.py: a file containing the definition of implicit kernel implied by neural networks
 # SEE LICENSE STATEMENT AT THE END OF THE FILE
 
+import numpy as np
 import torch
 from torch import nn
 from abc import ABC, abstractmethod
@@ -158,12 +159,12 @@ class ImplicitDenseNetKernel(ImplicitNNKernel):
         """
         for dense_block in self.dense_blocks:
             if isinstance(dense_block, nn.Linear):
-                nn.init.normal_(dense_block.weight, mean=w_mean, std=w_std/dense_block.out_features)
+                nn.init.normal_(dense_block.weight, mean=w_mean, std=w_std/np.sqrt(dense_block.out_features))
                 nn.init.normal_(dense_block.bias, mean=b_mean, std=b_std)
             else:
                 for layer in dense_block:
                     if isinstance(layer, nn.Linear):
-                        nn.init.normal_(layer.weight, mean=w_mean, std=w_std/layer.out_features)
+                        nn.init.normal_(layer.weight, mean=w_mean, std=w_std/np.sqrt(layer.out_features))
                         nn.init.normal_(layer.bias, mean=b_mean, std=b_std)
 
 class ImplicitConvNet2DKernel(ImplicitNNKernel):
