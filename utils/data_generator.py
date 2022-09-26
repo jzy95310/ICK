@@ -52,7 +52,7 @@ class DataGenerator(Dataset):
         else:
             return self.x[idx], self.y[idx]
 
-def create_ick_data_generator(x: Union[List[np.ndarray], np.ndarray], y: np.ndarray, shuffle_dataloader: bool, batch_size: int):
+def create_ick_data_generator(x: Union[List[np.ndarray], np.ndarray], y: np.ndarray, shuffle_dataloader: bool, batch_size: int) -> DataLoader:
     """
     Function to create a data generator for ICK
 

@@ -172,8 +172,9 @@ class Trainer(BaseTrainer):
                 if trigger_times >= self.patience:
                     # Trigger early stopping and save the best model
                     self.logger.info("Early stopping - patience reached")
-                    self.logger.info("Restoring the best model")
-                    self.model.load_state_dict(best_model_state_dict)
+                    if best_model_state_dict is not None:
+                        self.logger.info("Restoring the best model")
+                        self.model.load_state_dict(best_model_state_dict)
                     if self.model_save_dir is not None:
                         self.logger.info("Saving the best model")
                         torch.save(best_model_state_dict, os.path.join(self.model_save_dir, self.model_name))
@@ -283,8 +284,9 @@ class VariationalBayesTrainer(BaseTrainer):
                 if trigger_times >= self.patience:
                     # Trigger early stopping and save the best model
                     self.logger.info("Early stopping - patience reached")
-                    self.logger.info("Restoring the best model")
-                    self.model.load_state_dict(best_model_state_dict)
+                    if best_model_state_dict is not None:
+                        self.logger.info("Restoring the best model")
+                        self.model.load_state_dict(best_model_state_dict)
                     if self.model_save_dir is not None:
                         self.logger.info("Saving the best model")
                         torch.save(best_model_state_dict, os.path.join(self.model_save_dir, self.model_name))
@@ -360,6 +362,7 @@ class EnsembleTrainer(BaseTrainer):
         """
         y_train_pred = torch.empty(0).to(self.device)
         y_train_true = torch.empty(0).to(self.device)
+        self.model[base_learner_idx].train()
         self.model[base_learner_idx].to(self.device)
         for _, batch in enumerate(self.data_generators[TRAIN]):
             data, target = self._assign_device_to_data(batch[0], batch[1])
@@ -417,9 +420,10 @@ class EnsembleTrainer(BaseTrainer):
                     if trigger_times >= self.patience:
                         # Trigger early stopping and save the best ensemble
                         self.logger.info("Early stopping - patience reached")
-                        self.logger.info("Restoring the best model")
-                        for i in range(len(self.model)):
-                            self.model[i].load_state_dict(best_model_state_dict['model_'+str(i)])
+                        if best_model_state_dict is not None:
+                            self.logger.info("Restoring the best model")
+                            for i in range(len(self.model)):
+                                self.model[i].load_state_dict(best_model_state_dict['model_'+str(i)])
                         if self.model_save_dir is not None:
                             self.logger.info("Saving the best ensemble")
                             torch.save(best_model_state_dict, os.path.join(self.model_save_dir, self.model_name))

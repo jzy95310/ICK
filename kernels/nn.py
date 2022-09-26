@@ -14,7 +14,7 @@ class ImplicitNNKernel(nn.Module, ABC):
     Arguments
     --------------
     latent_feature_dim: int, the dimension of feature in the latent space
-    num_blocks: int, the number of blocks in the neural network, where depth = num_blocks * num_layers
+    num_blocks: int, the number of HIDDEN blocks in the neural network, where depth = num_blocks * num_layers
     activation: str, the activation function to be used in each layer, default to 'relu'
     dropout_ratio: float, the dropout ratio for dropout layers, default to 0.0
     """

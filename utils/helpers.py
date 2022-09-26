@@ -1,11 +1,10 @@
-# helpers.py: a file containing helper functions for data processing, model creation, and training
+# helpers.py: a file containing helper functions for data processing, model creation, and training of ICK models
 # SEE LICENSE STATEMENT AT THE END OF THE FILE
 
 import numpy as np
 from typing import Dict, Tuple, List, Union
 from .constants import *
 from .data_generator import create_ick_data_generator
-from model.ick import ICK
 
 def train_val_test_split(x: Union[List[np.ndarray], np.ndarray], y: np.ndarray, train_range: Tuple = (0.0,0.5), 
                          val_range: Tuple = (0.5,0.6), test_range: Tuple = (0.6,1.0), 
@@ -15,9 +14,9 @@ def train_val_test_split(x: Union[List[np.ndarray], np.ndarray], y: np.ndarray, 
     
     Arguments
     --------------
-    x: Union[List[np.ndarray], np.ndarray], a list of tensors containing information from multiple sources or
-        a single tensor containing information from a single source
-    y: np.ndarray, a tensor containing the targets/labels for prediction
+    x: Union[List[np.ndarray], np.ndarray], a list of arrays containing information from multiple sources or
+        a single array containing information from a single source
+    y: np.ndarray, an array containing the targets/labels for prediction
     train_range: Tuple, the range of the data to be used for training
     val_range: Tuple, the range of the data to be used for validation
     test_range: Tuple, the range of the data to be used for testing
