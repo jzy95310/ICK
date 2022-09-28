@@ -104,8 +104,8 @@ def calculate_stats(pred_vals_mean: np.ndarray, true_vals: np.ndarray, pred_vals
     mae = metrics.mean_absolute_error(true_vals, pred_vals_mean)
     res = tuple([spearmanr, pearsonr, rmse, mae])
     if pred_vals_std is not None:
-        pmcc_score = np.mean((-(true_vals-pred_vals_mean)/pred_vals_std)**2 - np.log(pred_vals_std**2))
-        res = res + (pmcc_score,)
+        msll_score = np.mean(-(true_vals-pred_vals_mean)**2/(2*pred_vals_std**2) - 0.5*np.log(2*np.pi*pred_vals_std**2))
+        res = res + (msll_score,)
     return res
 
 def plot_pred_vs_true_vals(pred_vals: np.ndarray, true_vals: np.ndarray, x_label: str, y_label: str, title: str = None, 
