@@ -4,7 +4,6 @@
 import torch
 
 import os
-import numpy as np
 import logging
 import time
 from typing import Dict, List, Tuple
@@ -30,6 +29,10 @@ class JointNNTrainer(Trainer):
     device: torch.device, the device to train the model on
     epochs: int, the number of epochs to train the model for
     patience: int, the number of epochs to wait before early stopping
+    verbose: int, the level of verbosity for the trainer, default to 0.
+        verbose = 0: no logging
+        verbose = 1: log all statistics of test predictions
+        verbose = 2: log and plot all statistics of test predictions
     scale_factor: float, the scale factor to be multiplied to the prediction from the ML model
     logger: logging.Logger, an instance of logging.Logger for logging messages, errors, exceptions
 
@@ -41,10 +44,11 @@ class JointNNTrainer(Trainer):
     def __init__(self, model: torch.nn.Module, data_generators: Dict, optim: str, optim_params: Dict,
                  lr_scheduler: torch.optim.lr_scheduler._LRScheduler = None, model_save_dir: str = None, model_name: str = 'model.pt', 
                  loss_fn: torch.nn.modules.loss._Loss = torch.nn.MSELoss(), device: torch.device = torch.device('cpu'), 
-                 epochs: int = 100, patience: int = 10, scale_factor: float = 0.95, logger: logging.Logger = logging.getLogger("Trainer")) -> None:
+                 epochs: int = 100, patience: int = 10, verbose: int = 0, scale_factor: float = 0.95, 
+                 logger: logging.Logger = logging.getLogger("Trainer")) -> None:
         self.scale_factor = scale_factor
         super(JointNNTrainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, model_save_dir, model_name, 
-                                             loss_fn, device, epochs, patience, logger)
+                                             loss_fn, device, epochs, patience, verbose, logger)
         self._validate_inputs()
         self._set_optimizer()
     
@@ -120,6 +124,13 @@ class JointNNTrainer(Trainer):
                 trigger_times = 0
                 best_loss = val_loss
                 best_model_state_dict = self.model.state_dict()
+            # Visualize the test predictions if verbose > 0
+            if self.verbose > 0:
+                with torch.no_grad():
+                    y_test_pred, y_test_true = self.predict()
+                stats_for_test_pred = self._log_prediction_stats(y_test_pred, y_test_true)
+                if self.verbose > 1:
+                    self._plot_predictions(y_test_pred, y_test_true, stats_for_test_pred)
         if trigger_times < self.patience:
             self.logger.info("Training completed without early stopping.")
     
@@ -168,11 +179,11 @@ class JointNNEnsembleTrainer(EnsembleTrainer):
     """
     def __init__(self, model: List, data_generators: Dict, optim: str, optim_params: Dict, lr_scheduler: torch.optim.lr_scheduler._LRScheduler = None, 
                  num_jobs: int = None, model_save_dir: str = None, model_name: str = 'model.pt', loss_fn: torch.nn.modules.loss._Loss = torch.nn.MSELoss(), 
-                 device: torch.device = torch.device('cpu'), epochs: int = 100, patience: int = 10, scale_factor: float = 0.95, 
+                 device: torch.device = torch.device('cpu'), epochs: int = 100, patience: int = 10, verbose: int = 0, scale_factor: float = 0.95, 
                  logger: logging.Logger = logging.getLogger("Trainer")) -> None:
         self.scale_factor = scale_factor
         super(JointNNEnsembleTrainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, num_jobs, model_save_dir, model_name, 
-                                                     loss_fn, device, epochs, patience, logger)
+                                                     loss_fn, device, epochs, patience, verbose, logger)
         self._validate_inputs()
         self._set_optimizer()
     

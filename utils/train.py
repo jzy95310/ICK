@@ -11,6 +11,7 @@ import time
 from typing import Dict, List, Tuple, Union
 from abc import ABC, abstractmethod
 from .constants import *
+from .helpers import calculate_stats, plot_pred_vs_true_vals
 from joblib import Parallel, delayed
 
 class BaseTrainer(ABC):
@@ -30,13 +31,17 @@ class BaseTrainer(ABC):
     device: torch.device, the device to train the model on
     epochs: int, the number of epochs to train the model for
     patience: int, the number of epochs to wait before early stopping
+    verbose: int, the level of verbosity for the trainer, default to 0.
+        verbose = 0: no logging
+        verbose = 1: log all statistics of test predictions
+        verbose = 2: log and plot all statistics of test predictions
     logger: logging.Logger, an instance of logging.Logger for logging messages, errors, exceptions
     """
     @abstractmethod
     def __init__(self, model: Union[torch.nn.Module, List], data_generators: Dict, optim: str, optim_params: Dict,
                  lr_scheduler: torch.optim.lr_scheduler._LRScheduler = None, model_save_dir: str = None, model_name: str = 'model.pt', 
                  loss_fn: torch.nn.modules.loss._Loss = torch.nn.MSELoss(), device: torch.device = torch.device('cpu'), 
-                 epochs: int = 100, patience: int = 10, logger: logging.Logger = logging.getLogger("Trainer")) -> None:
+                 epochs: int = 100, patience: int = 10, verbose: int = 0, logger: logging.Logger = logging.getLogger("Trainer")) -> None:
         self.model: Union[torch.nn.Module, List] = model
         self.data_generators: Dict = data_generators
         self.optim: str = optim
@@ -49,10 +54,11 @@ class BaseTrainer(ABC):
         self.epochs: int = epochs
         self.patience: int = patience
         self.logger: logging.Logger = logger
+        self.verbose: int = verbose
         self.logger.setLevel(logging.INFO)
         if self.logger.hasHandlers():
             self.logger.handlers.clear()
-        self.logger.addHandler(logging.StreamHandler(stream=sys.stderr))
+        self.logger.addHandler(logging.StreamHandler(stream=sys.stdout))
         self._validate_inputs()
         self._set_optimizer()
     
@@ -93,6 +99,31 @@ class BaseTrainer(ABC):
         """
         self.optimizer = OPTIMIZERS[self.optim](self.model.parameters(), **self.optim_params)
     
+    def _log_prediction_stats(self, pred_mean: np.ndarray, target: np.ndarray, pred_std: Union[np.ndarray, None] = None) -> Tuple:
+        """
+        Log and return the statistics of the predictions
+        """
+        res = calculate_stats(pred_mean, target, pred_std)
+        res_dict = {"Spearman_R": res[0], "Pearson_R": res[1], "RMSE": res[2], "MAE": res[3]}
+        if len(res) > 4:
+            res_dict["MSLL"] = res[4]
+        for k, v in res_dict.items():
+            self.logger.info("{}: {}".format(k, v))
+        return res_dict
+    
+    def _plot_predictions(self, pred_mean: np.ndarray, target: np.ndarray, stats: Dict = None) -> None:
+        """
+        Plot the predictions
+        """
+        stats = stats if stats is not None else {}
+        plot_pred_vs_true_vals(
+            pred_mean, 
+            target,
+            x_label='Predicted Values',
+            y_label='True Values',
+            **stats
+        )
+    
     @abstractmethod
     def train(self) -> None:
         """
@@ -113,10 +144,10 @@ class Trainer(BaseTrainer):
     """
     def __init__(self, model: torch.nn.Module, data_generators: Dict, optim: str, optim_params: Dict, lr_scheduler: torch.optim.lr_scheduler._LRScheduler = None, 
                  model_save_dir: str = None, model_name: str = 'model.pt', loss_fn: torch.nn.modules.loss._Loss = torch.nn.MSELoss(), 
-                 device: torch.device = torch.device('cpu'), epochs: int = 100, patience: int = 10, 
+                 device: torch.device = torch.device('cpu'), epochs: int = 100, patience: int = 10, verbose: int = 0, 
                  logger: logging.Logger = logging.getLogger("Trainer")) -> None:
         super(Trainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, model_save_dir, model_name, loss_fn, 
-                                      device, epochs, patience, logger)
+                                      device, epochs, patience, verbose, logger)
         self._validate_inputs()
         self._set_optimizer()
     
@@ -186,6 +217,13 @@ class Trainer(BaseTrainer):
                 trigger_times = 0
                 best_loss = val_loss
                 best_model_state_dict = self.model.state_dict()
+            # Visualize the test predictions if verbose > 0
+            if self.verbose > 0:
+                with torch.no_grad():
+                    y_test_pred, y_test_true = self.predict()
+                stats_for_test_pred = self._log_prediction_stats(y_test_pred, y_test_true)
+                if self.verbose > 1:
+                    self._plot_predictions(y_test_pred, y_test_true, stats_for_test_pred)
         if trigger_times < self.patience:
             self.logger.info("Training completed without early stopping.")
     
@@ -230,11 +268,11 @@ class VariationalBayesTrainer(BaseTrainer):
     def __init__(self, model: torch.nn.Module, data_generators: Dict, optim: str, optim_params: Dict, lr_scheduler: torch.optim.lr_scheduler._LRScheduler = None,
                  model_save_dir: str = None, model_name: str = 'model.pt', loss_fn: torch.nn.modules.loss._Loss = torch.nn.MSELoss(), 
                  device: torch.device = torch.device('cpu'), epochs: int = 100, logger: logging.Logger = logging.getLogger("Trainer"), 
-                 patience: int = 10, kl_weight: float = 0.1) -> None:
+                 patience: int = 10, verbose: int = 0, kl_weight: float = 0.1) -> None:
         self.kl_loss = bnn.BKLLoss(reduction='mean', last_layer_only=False)
         self.kl_weight: float = kl_weight
         super(VariationalBayesTrainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, model_save_dir, model_name, 
-                                           loss_fn, device, epochs, patience, logger)
+                                           loss_fn, device, epochs, patience, verbose, logger)
         self._validate_inputs()
     
     def _validate_inputs(self) -> None:
@@ -298,6 +336,13 @@ class VariationalBayesTrainer(BaseTrainer):
                 trigger_times = 0
                 best_loss = train_loss
                 best_model_state_dict = self.model.state_dict()
+            # Visualize the test predictions if verbose > 0
+            if self.verbose > 0:
+                with torch.no_grad():
+                    y_test_pred_mean, y_test_pred_std, y_test_true = self.predict()
+                stats_for_test_pred = self._log_prediction_stats(y_test_pred_mean, y_test_true, y_test_pred_std)
+                if self.verbose > 1:
+                    self._plot_predictions(y_test_pred_mean, y_test_true, stats_for_test_pred)
         if trigger_times < self.patience:
             self.logger.info("Training completed.")
     
@@ -335,10 +380,11 @@ class EnsembleTrainer(BaseTrainer):
     """
     def __init__(self, model: List, data_generators: Dict, optim: str, optim_params: Dict, lr_scheduler: torch.optim.lr_scheduler._LRScheduler = None, 
                  num_jobs: int = None, model_save_dir: str = None, model_name: str = 'model.pt', loss_fn: torch.nn.modules.loss._Loss = torch.nn.MSELoss(), 
-                 device: torch.device = torch.device('cpu'), epochs: int = 100, patience: int = 10, logger: logging.Logger = logging.getLogger("Trainer")) -> None:
+                 device: torch.device = torch.device('cpu'), epochs: int = 100, patience: int = 10, verbose: int = 0, 
+                 logger: logging.Logger = logging.getLogger("Trainer")) -> None:
         self.num_jobs: int = num_jobs
         super(EnsembleTrainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, model_save_dir, model_name, 
-                                              loss_fn, device, epochs, patience, logger)
+                                              loss_fn, device, epochs, patience, verbose, logger)
         self._validate_inputs()
         self._set_optimizer()
     
@@ -435,6 +481,13 @@ class EnsembleTrainer(BaseTrainer):
                     trigger_times = 0
                     best_loss = train_loss
                     best_model_state_dict = {'model_'+str(i): self.model[i].state_dict() for i in range(len(self.model))}
+                # Visualize the test predictions if verbose > 0
+                if self.verbose > 0:
+                    with torch.no_grad():
+                        y_test_pred_mean, y_test_pred_std, y_test_true = self.predict()
+                    stats_for_test_pred = self._log_prediction_stats(y_test_pred_mean, y_test_true, y_test_pred_std)
+                    if self.verbose > 1:
+                        self._plot_predictions(y_test_pred_mean, y_test_true, stats_for_test_pred)
             if trigger_times < self.patience:
                 self.logger.info("Training completed.")
     
