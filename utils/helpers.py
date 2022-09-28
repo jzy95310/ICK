@@ -1,8 +1,15 @@
 # helpers.py: a file containing helper functions for data processing, model creation, and training of ICK models
 # SEE LICENSE STATEMENT AT THE END OF THE FILE
 
+import os
 import numpy as np
-from typing import Dict, Tuple, List, Union
+import pickle as pkl
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+from scipy import stats
+from sklearn import metrics
+from typing import Callable, Dict, Tuple, List, Union
 from .constants import *
 from .data_generator import create_ick_data_generator
 
@@ -53,10 +60,10 @@ def train_val_test_split(x: Union[List[np.ndarray], np.ndarray], y: np.ndarray, 
     return x_train, y_train, x_val, y_val, x_test, y_test
 
 def create_generators_from_data(x_train: Union[List[np.ndarray], np.ndarray], y_train: np.ndarray, 
-                                x_val: Union[List[np.ndarray], np.ndarray, None], y_val: Union[np.ndarray, None], 
                                 x_test: Union[List[np.ndarray], np.ndarray], y_test: np.ndarray, 
+                                x_val: Union[List[np.ndarray], np.ndarray, None] = None, y_val: Union[np.ndarray, None] = None, 
                                 train_batch_size: int = 50, val_batch_size: int = 300, 
-                                test_batch_size: int = 300) -> Dict:
+                                test_batch_size: int = 300, x_transform: Union[Callable, None] = None) -> Dict:
     """
     Create the data generators for the ICK model
 
@@ -65,15 +72,89 @@ def create_generators_from_data(x_train: Union[List[np.ndarray], np.ndarray], y_
     train_batch_size: int, batch size of the data generator for training
     val_batch_size: int, batch size of the data generator for validation
     test_batch_size: int, batch size of the data generator for testing
+    x_transform: Union[Callable, None], a torchvision.transforms function that transforms all sources of information 
+        in x whose dimension are 3 or higher
     """
-    train_data_generator = create_ick_data_generator(x_train, y_train, shuffle_dataloader=True, batch_size=train_batch_size)
-    test_data_generator = create_ick_data_generator(x_test, y_test, shuffle_dataloader=False, batch_size=test_batch_size)
+    train_data_generator = create_ick_data_generator(x_train, y_train, shuffle_dataloader=True, batch_size=train_batch_size, 
+                                                     x_transform=x_transform)
+    test_data_generator = create_ick_data_generator(x_test, y_test, shuffle_dataloader=False, batch_size=test_batch_size, 
+                                                    x_transform=x_transform)
     if x_val is not None and y_val is not None:
-        val_data_generator = create_ick_data_generator(x_val, y_val, shuffle_dataloader=False, batch_size=val_batch_size)
+        val_data_generator = create_ick_data_generator(x_val, y_val, shuffle_dataloader=False, batch_size=val_batch_size, 
+                                                       x_transform=x_transform)
     else:
         val_data_generator = None
     
     return {TRAIN: train_data_generator, VAL: val_data_generator, TEST: test_data_generator}
+
+def calculate_stats(pred_vals_mean: np.ndarray, true_vals: np.ndarray, pred_vals_std: Union[np.ndarray, None] = None) -> Tuple:
+    """
+    Calculate the R-squared values, RMSE, MAE, and mean score of predictive model choice criterion (PMCC) 
+    for the predictions
+    
+    Arguments
+    --------------
+    pred_vals_mean: np.ndarray, the mean of the predicted values
+    true_vals: np.ndarray, the true values
+    pred_vals_std: Union[np.ndarray, None], the standard deviation of the predicted values
+    """
+    spearmanr = stats.spearmanr(pred_vals_mean, true_vals)[0]
+    pearsonr = stats.pearsonr(pred_vals_mean, true_vals)[0]
+    rmse = np.sqrt(metrics.mean_squared_error(true_vals, pred_vals_mean))
+    mae = metrics.mean_absolute_error(true_vals, pred_vals_mean)
+    res = tuple([spearmanr, pearsonr, rmse, mae])
+    if pred_vals_std is not None:
+        pmcc_score = np.mean((-(true_vals-pred_vals_mean)/pred_vals_std)**2 - np.log(pred_vals_std**2))
+        res = res + (pmcc_score,)
+    return res
+
+def plot_pred_vs_true_vals(pred_vals: np.ndarray, true_vals: np.ndarray, x_label: str, y_label: str, title: str = None, 
+                           data_save_path: str = None, fig_save_path: str = None, lower_bound: float = 0.0, 
+                           upper_bound: float = 1000.0, margin: float = 20.0, **kwargs) -> None:
+    """
+    Plot the predicted values against the true values
+    
+    Arguments
+    --------------
+    pred_vals: np.ndarray, the predicted values
+    true_vals: np.ndarray, the true values
+    x_label: str, the label for the x-axis
+    y_label: str, the label for the y-axis
+    title: str, the title of the plot
+    data_save_path: str, the path to save the data of the plot
+    fig_save_path: str, the path to save the plot
+    lower_bound: float, the lower-left coordinates (both x and y) of the plot
+    upper_bound: float, the upper-right coordinates (both x and y) of the plot
+    margin: float, additional margin beyond the lower and upper bound for better visualization
+    kwargs: additional texts to be displayed at the upper-left corner of the plot. For example, kwargs = {'RMSE': 0.5}
+        will be displayed as "RMSE = 0.5"
+    """
+    plt.clf()
+    _, ax = plt.subplots(figsize=(12, 10))
+    data = pd.DataFrame(data={'true_vals': true_vals, 'pred_vals': pred_vals})
+    ax = sns.histplot(data, x='true_vals', y='pred_vals', cbar=False, color='orange')
+    ax.set_xlim((lower_bound-margin, upper_bound+margin))
+    ax.set_ylim((lower_bound-margin, upper_bound+margin))
+    ax.plot([lower_bound, upper_bound], [lower_bound, upper_bound], 'r--', lw=3)
+    ax.set_xlabel(x_label, size = 30)
+    ax.set_ylabel(y_label, size = 30)
+    if title is not None:
+        ax.set_title(title, size = 30)
+    ax.tick_params(labelsize = 28)
+    for i, (key, val) in enumerate(kwargs.items()):
+        ax.text(0.02, 0.98-i*0.08, f'{key} = {val:.2f}', ha='left', va='top', color='black', weight='roman', 
+                fontsize=30, transform=ax.transAxes)
+    if data_save_path is not None:
+        if not os.path.exists(os.path.dirname(data_save_path)):
+            os.makedirs(os.path.dirname(data_save_path))
+        data_dict = {'true_vals': true_vals, 'pred_vals': pred_vals}
+        with open(data_save_path, 'wb') as fp:
+            pkl.dump(data_dict, fp)
+    if fig_save_path is not None:
+        if not os.path.exists(os.path.dirname(fig_save_path)):
+            os.makedirs(os.path.dirname(fig_save_path))
+        plt.savefig(fig_save_path, dpi=300, bbox_inches='tight')
+    plt.show()
 
 # ########################################################################################
 # MIT License

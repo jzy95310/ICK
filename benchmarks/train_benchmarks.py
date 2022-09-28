@@ -10,7 +10,6 @@ import time
 from typing import Dict, List, Tuple
 from utils.train import Trainer, EnsembleTrainer
 from utils.constants import *
-from joblib import Parallel, delayed
 
 class JointNNTrainer(Trainer):
     """
@@ -94,13 +93,16 @@ class JointNNTrainer(Trainer):
             self.logger.info("{:.0f}s for {} steps - {:.0f}ms/step - loss {:.4f}" \
                   .format(train_time, step + 1, train_time * 1000 // (step + 1), train_loss))
             # Validation
-            val_start = time.time()
-            self.logger.info("Validation:")
-            val_loss = self.validate()
-            val_time = time.time() - val_start
-            self.logger.info("{:.0f}s - loss {:.4f}\n".format(val_time, val_loss))
-            if self.lr_scheduler is not None:
-                self.lr_scheduler.step()
+            if self.data_generators[VAL] is not None:
+                val_start = time.time()
+                self.logger.info("Validation:")
+                val_loss = self.validate()
+                val_time = time.time() - val_start
+                self.logger.info("{:.0f}s - loss {:.4f}\n".format(val_time, val_loss))
+                if self.lr_scheduler is not None:
+                    self.lr_scheduler.step()
+            else:
+                val_loss = train_loss
             # Early stopping
             if val_loss > best_loss:
                 trigger_times += 1

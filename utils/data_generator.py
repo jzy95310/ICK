@@ -2,7 +2,7 @@
 # SEE LICENSE STATEMENT AT THE END OF THE FILE
 
 import numpy as np
-from typing import List, Union
+from typing import List, Union, Callable
 
 import torch
 from torch.utils.data import DataLoader
@@ -18,13 +18,15 @@ class DataGenerator(Dataset):
         a single tensor containing information from a single source
     y: np.ndarray, a tensor containing the targets/labels for prediction
     dtype: str, the data type of the input tensors
-    shuffle: bool, whether to shuffle the data
-    random_seed: int, the random seed for shuffling the data
+    x_transform: a torchvision.transforms function that transforms all sources of information in x whose dimension
+        are 3 or higher
     """
-    def __init__(self, x: Union[List[np.ndarray], np.ndarray], y: np.ndarray, dtype: str = 'float32') -> None:
+    def __init__(self, x: Union[List[np.ndarray], np.ndarray], y: np.ndarray, dtype: str = 'float32', 
+                 x_transform: Union[Callable, None] = None) -> None:
         self.x: Union[List[np.ndarray], np.ndarray] = x
         self.y: np.ndarray = y
         self.dtype: str = dtype
+        self.x_transform: Callable = x_transform
         self._validate_and_preprocess_inputs()
     
     def _validate_and_preprocess_inputs(self) -> None:
@@ -40,6 +42,8 @@ class DataGenerator(Dataset):
             self.x = tuple(map(lambda item: item.reshape(-1,1).astype(self.dtype) if len(item.shape) == 1 else item.astype(self.dtype), self.x))
         else:
             self.x = self.x.reshape(-1,1).astype(self.dtype) if len(self.x.shape) == 1 else self.x.astype(self.dtype)
+        self.y = self.y.reshape(-1).astype(self.dtype)
+        assert self.x_transform is None or isinstance(self.x_transform, Callable), "x_transform must be either None or a callable function."
 
     def __len__(self) -> int:
         return len(self.x[0]) if isinstance(self.x, tuple) else len(self.x)
@@ -48,11 +52,18 @@ class DataGenerator(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
         if isinstance(self.x, tuple):
-            return [item[idx] for item in self.x], self.y[idx]
+            if self.x_transform is not None:
+                return [self.x_transform(item[idx].astype(np.uint8)) if len(item[idx].shape) >= 3 else item[idx] for item in self.x], self.y[idx]
+            else:
+                return [item[idx] for item in self.x], self.y[idx]
         else:
-            return self.x[idx], self.y[idx]
+            if self.x_transform is not None:
+                return self.x_transform(self.x[idx].astype(np.uint8)) if len(self.x[idx].shape) >= 3 else self.x[idx], self.y[idx]
+            else:
+                return self.x[idx], self.y[idx]
 
-def create_ick_data_generator(x: Union[List[np.ndarray], np.ndarray], y: np.ndarray, shuffle_dataloader: bool, batch_size: int) -> DataLoader:
+def create_ick_data_generator(x: Union[List[np.ndarray], np.ndarray], y: np.ndarray, shuffle_dataloader: bool, batch_size: int, 
+                              x_transform: Union[Callable, None] = None) -> DataLoader:
     """
     Function to create a data generator for ICK
 
@@ -63,12 +74,14 @@ def create_ick_data_generator(x: Union[List[np.ndarray], np.ndarray], y: np.ndar
     y: np.ndarray, a tensor containing the targets/labels for prediction
     shuffle_dataloader: bool, whether to shuffle the data loader
     batch_size: int, batch size of the data generator
+    x_transform: a torchvision.transforms function that transforms all sources of information in x whose dimension
+        are 3 or higher
 
     Return:
     --------------
     A torch.utils.data.DataLoader which can generate data for learning ICK
     """
-    dataset = DataGenerator(x,y)
+    dataset = DataGenerator(x, y, x_transform=x_transform)
     return DataLoader(dataset, shuffle=shuffle_dataloader, batch_size=batch_size)
 
 # ########################################################################################

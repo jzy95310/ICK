@@ -2,7 +2,7 @@
 # SEE LICENSE STATEMENT AT THE END OF THE FILE
 
 import numpy as np
-from typing import Tuple, Union, Dict
+from typing import Tuple, Union, Dict, Callable
 from utils.helpers import train_val_test_split
 from utils.constants import *
 from .data_generator import create_joint_nn_data_generator
@@ -47,10 +47,11 @@ def train_val_test_split_for_joint_nn(x: np.ndarray, aug_feature: np.ndarray, y:
         x_test, aug_feature_test, y_test, y_pred_test
 
 def create_generators_from_data_for_joint_nn(x_train: np.ndarray, aug_feature_train: np.ndarray, y_train: np.ndarray, y_pred_train: np.ndarray, 
-                                             x_val: Union[np.ndarray, None], aug_feature_val: Union[np.ndarray, None], 
-                                             y_val: Union[np.ndarray, None], y_pred_val: Union[np.ndarray, None], 
                                              x_test: np.ndarray, aug_feature_test: np.ndarray, y_test: np.ndarray, y_pred_test: np.ndarray, 
-                                             train_batch_size: int = 50, val_batch_size: int = 300, test_batch_size: int = 300) -> Dict:
+                                             x_val: Union[np.ndarray, None] = None, aug_feature_val: Union[np.ndarray, None] = None, 
+                                             y_val: Union[np.ndarray, None] = None, y_pred_val: Union[np.ndarray, None] = None, 
+                                             train_batch_size: int = 50, val_batch_size: int = 300, test_batch_size: int = 300, 
+                                             x_transform: Union[Callable, None] = None) -> Dict:
     """
     Create the data generators for benchmark joint NN model
 
@@ -59,14 +60,15 @@ def create_generators_from_data_for_joint_nn(x_train: np.ndarray, aug_feature_tr
     train_batch_size: int, batch size of the data generator for training
     val_batch_size: int, batch size of the data generator for validation
     test_batch_size: int, batch size of the data generator for testing
+    x_transform: None or Callable, a function to transform the input x
     """
-    train_data_generator = create_joint_nn_data_generator(x_train, aug_feature_train, y_train, y_pred_train, 
-                                                          shuffle_dataloader=True, batch_size=train_batch_size)
-    test_data_generator = create_joint_nn_data_generator(x_test, aug_feature_test, y_test, y_pred_test,
-                                                         shuffle_dataloader=False, batch_size=test_batch_size)
+    train_data_generator = create_joint_nn_data_generator(x_train, aug_feature_train, y_train, y_pred_train, shuffle_dataloader=True, 
+                                                          batch_size=train_batch_size, x_transform=x_transform)
+    test_data_generator = create_joint_nn_data_generator(x_test, aug_feature_test, y_test, y_pred_test, shuffle_dataloader=False, 
+                                                         batch_size=test_batch_size, x_transform=x_transform)
     if all([m is not None for m in [x_val, aug_feature_val, y_val, y_pred_val]]):
-        val_data_generator = create_joint_nn_data_generator(x_val, aug_feature_val, y_val, y_pred_val,
-                                                            shuffle_dataloader=False, batch_size=val_batch_size)
+        val_data_generator = create_joint_nn_data_generator(x_val, aug_feature_val, y_val, y_pred_val, shuffle_dataloader=False, 
+                                                            batch_size=val_batch_size, x_transform=x_transform)
     else:
         val_data_generator = None
     
