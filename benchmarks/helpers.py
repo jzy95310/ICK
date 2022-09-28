@@ -50,7 +50,7 @@ def create_generators_from_data_for_joint_nn(x_train: np.ndarray, aug_feature_tr
                                              x_test: np.ndarray, aug_feature_test: np.ndarray, y_test: np.ndarray, y_pred_test: np.ndarray, 
                                              x_val: Union[np.ndarray, None] = None, aug_feature_val: Union[np.ndarray, None] = None, 
                                              y_val: Union[np.ndarray, None] = None, y_pred_val: Union[np.ndarray, None] = None, 
-                                             train_batch_size: int = 50, val_batch_size: int = 300, test_batch_size: int = 300, 
+                                             train_batch_size: int = 32, val_batch_size: int = 64, test_batch_size: int = 64, 
                                              x_transform: Union[Callable, None] = None) -> Dict:
     """
     Create the data generators for benchmark joint NN model

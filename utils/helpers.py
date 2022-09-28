@@ -62,8 +62,8 @@ def train_val_test_split(x: Union[List[np.ndarray], np.ndarray], y: np.ndarray, 
 def create_generators_from_data(x_train: Union[List[np.ndarray], np.ndarray], y_train: np.ndarray, 
                                 x_test: Union[List[np.ndarray], np.ndarray], y_test: np.ndarray, 
                                 x_val: Union[List[np.ndarray], np.ndarray, None] = None, y_val: Union[np.ndarray, None] = None, 
-                                train_batch_size: int = 50, val_batch_size: int = 300, 
-                                test_batch_size: int = 300, x_transform: Union[Callable, None] = None) -> Dict:
+                                train_batch_size: int = 32, val_batch_size: int = 64, 
+                                test_batch_size: int = 64, x_transform: Union[Callable, None] = None) -> Dict:
     """
     Create the data generators for the ICK model
 
