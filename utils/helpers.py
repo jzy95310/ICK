@@ -89,8 +89,7 @@ def create_generators_from_data(x_train: Union[List[np.ndarray], np.ndarray], y_
 
 def calculate_stats(pred_vals_mean: np.ndarray, true_vals: np.ndarray, pred_vals_std: Union[np.ndarray, None] = None) -> Tuple:
     """
-    Calculate the R-squared values, RMSE, MAE, and mean score of predictive model choice criterion (PMCC) 
-    for the predictions
+    Calculate the R-squared values, RMSE, MAE, and mean standardized log loss (MSLL) for evaluating the predictions
     
     Arguments
     --------------
