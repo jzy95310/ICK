@@ -463,8 +463,19 @@ class EnsembleTrainer(BaseTrainer):
                 self.logger.info("Training time - {:.0f}s - loss {:.4f}".format(train_time, train_loss))
                 if self.lr_scheduler is not None:
                     self.lr_scheduler.step()
+                # Validation
+                if self.data_generators[VAL] is not None:
+                    val_start = time.time()
+                    self.logger.info("Validation:")
+                    val_loss = self.validate()
+                    val_time = time.time() - val_start
+                    self.logger.info("{:.0f}s - loss {:.4f}\n".format(val_time, val_loss))
+                    if self.lr_scheduler is not None:
+                        self.lr_scheduler.step()
+                else:
+                    val_loss = train_loss
                 # Early stopping
-                if train_loss > best_loss:
+                if val_loss > best_loss:
                     trigger_times += 1
                     if trigger_times >= self.patience:
                         # Trigger early stopping and save the best ensemble
@@ -479,7 +490,7 @@ class EnsembleTrainer(BaseTrainer):
                         break
                 else:
                     trigger_times = 0
-                    best_loss = train_loss
+                    best_loss = val_loss
                     best_model_state_dict = {'model_'+str(i): self.model[i].state_dict() for i in range(len(self.model))}
                 # Visualize the test predictions if verbose > 0
                 if self.verbose > 0:
@@ -491,7 +502,38 @@ class EnsembleTrainer(BaseTrainer):
             if trigger_times < self.patience:
                 self.logger.info("Training completed.")
     
-    def predict(self) -> None:
+    def validate(self) -> torch.Tensor:
+        """
+        Evaluate the ICK ensemble model on the validation data
+        """
+        if isinstance(self.loss_fn, torch.nn.GaussianNLLLoss):
+            mean_pred = [torch.empty(0).to(self.device) for _ in range(len(self.model))]
+        else:
+            y_val_pred = [torch.empty(0).to(self.device) for _ in range(len(self.model))]
+        y_val_true = torch.empty(0).to(self.device)
+
+        with torch.no_grad():
+            for i in range(len(self.model)):
+                self.model[i].eval()
+                for batch in self.data_generators[VAL]:
+                    data, target = self._assign_device_to_data(batch[0], batch[1])
+                    if isinstance(self.loss_fn, torch.nn.GaussianNLLLoss):
+                        mean, _ = self.model[i](data)
+                        mean_pred[i] = torch.cat((mean_pred[i], mean.float()), dim=0)
+                    else:
+                        output = self.model[i](data).float()
+                        y_val_pred[i] = torch.cat((y_val_pred[i], output), dim=0)
+                    if i == 0:
+                        y_val_true = torch.cat((y_val_true, target), dim=0)
+        if isinstance(self.loss_fn, torch.nn.GaussianNLLLoss):
+            # Compute the mean and variance of the predictions as a Gaussian mixture
+            y_val_pred_mean = torch.mean(torch.stack(mean_pred, dim=0), dim=0)
+        else:
+            y_val_pred_mean = torch.mean(torch.stack(y_val_pred, dim=0), dim=0)
+        val_loss = self.loss_fn(y_val_pred_mean, y_val_true).item()
+        return val_loss
+    
+    def predict(self) -> Tuple:
         """
         Evaluate the ensemble of ICK models on the test data
         """

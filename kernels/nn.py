@@ -4,6 +4,7 @@
 import numpy as np
 import torch
 from torch import nn
+import vit_pytorch as vitorch
 from abc import ABC, abstractmethod
 from .constants import ACTIVATIONS
 
@@ -37,6 +38,27 @@ class ImplicitNNKernel(nn.Module, ABC):
         assert self.activation in ACTIVATIONS, "The activation function should be one of the following: {}".format(ACTIVATIONS.keys())
         assert 0.0 <= self.dropout_ratio <= 1.0, "The dropout ratio should be between 0.0 and 1.0."
     
+    def _build_conv_block(self, in_channels: int, out_channels: int, kernel_size: int, stride: int, 
+                          use_batch_norm: bool, activation: str) -> nn.Sequential:
+        """
+        Build a convolutional block
+        """
+        return nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size, stride),
+            nn.BatchNorm2d(out_channels) if use_batch_norm else nn.Identity(),
+            ACTIVATIONS[activation]
+        )
+    
+    def _build_dense_block(self, input_dim: int, output_dim: int, activation: str, dropout_ratio: float) -> nn.Sequential:
+        """
+        Build a dense block
+        """
+        return nn.Sequential(
+            nn.Linear(input_dim, output_dim),
+            ACTIVATIONS[activation],
+            nn.Dropout(dropout_ratio)
+        )
+    
     @abstractmethod
     def _build_layers(self) -> None:
         """
@@ -51,7 +73,6 @@ class ImplicitNNKernel(nn.Module, ABC):
         """
         pass
 
-    @abstractmethod
     def get_depth(self) -> None:
         """
         Get the depth of the neural network
@@ -91,11 +112,7 @@ class ImplicitDenseNetKernel(ImplicitNNKernel):
             self.dense_blocks.append(nn.Linear(self.input_dim, self.latent_feature_dim))
         else:
             self.dense_blocks.append(
-                nn.Sequential(
-                    nn.Linear(self.input_dim, self.num_units),
-                    ACTIVATIONS[self.activation],
-                    nn.Dropout(self.dropout_ratio)
-                )
+                self._build_dense_block(self.input_dim, self.num_units, self.activation, self.dropout_ratio)
             )
             for _ in range(self.num_blocks - 1):
                 self.dense_blocks.append(
@@ -186,8 +203,8 @@ class ImplicitConvNet2DKernel(ImplicitNNKernel):
     """
     def __init__(self, input_width: int, input_height: int, in_channels: int, latent_feature_dim: int, num_blocks: int, 
                  num_intermediate_channels: int = 64, kernel_size: int = 3, stride: int = 1, use_batch_norm: bool = False, 
-                 activation: str = 'relu', adaptive_avgpool_size: int = 7, num_hidden_dense_layers: int = 0, 
-                 num_dense_units: int = 256, dropout_ratio: float = 0.0) -> None:
+                 activation: str = 'relu', adaptive_avgpool_size: int = 7, num_hidden_dense_layers: int = 2, 
+                 num_dense_units: int = 512, dropout_ratio: float = 0.0) -> None:
         self.input_width: int = input_width
         self.input_height: int = input_height
         self.in_channels = in_channels
@@ -215,27 +232,6 @@ class ImplicitConvNet2DKernel(ImplicitNNKernel):
         assert self.num_hidden_dense_layers >= 0, "The number of hidden dense layers should be non-negative."
         assert self.num_dense_units > 0, "The number of dense units should be positive."
         super(ImplicitConvNet2DKernel, self)._validate_inputs()
-    
-    def _build_conv_block(self, in_channels: int, out_channels: int, kernel_size: int, stride: int, 
-                          use_batch_norm: bool, activation: str) -> nn.Sequential:
-        """
-        Build a convolutional block
-        """
-        return nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size, stride),
-            nn.BatchNorm2d(out_channels) if use_batch_norm else nn.Identity(),
-            ACTIVATIONS[activation]
-        )
-    
-    def _build_dense_block(self, input_dim: int, output_dim: int, activation: str, dropout_ratio: float) -> nn.Sequential:
-        """
-        Build a dense block
-        """
-        return nn.Sequential(
-            nn.Linear(input_dim, output_dim),
-            ACTIVATIONS[activation],
-            nn.Dropout(dropout_ratio)
-        )
     
     def _build_layers(self) -> None:
         self.conv_blocks: nn.ModuleList = nn.ModuleList()
@@ -319,6 +315,124 @@ class ImplicitConvNet2DKernel(ImplicitNNKernel):
         Freeze all convolutional blocks of the 2D ConvNet
         """
         self.freeze_blocks(self.num_blocks)
+
+class ImplicitViTKernel(ImplicitNNKernel):
+    """
+    Implicit kernel implied by a Vision Transformer (ViT)
+
+    Arguments
+    --------------
+    input_width: int, the width of input tensor
+    input_height: int, the height of input tensor
+    patch_size: int, the size of one image patch. The image will be divided into patches of size (patch_size, patch_size).
+        Must be divisible by max(input_width, input_height).
+    latent_dim: int, the dimension of feature in the latent space
+    num_blocks: int, the number of Transformer blocks
+    readout_layer_dim: int, the dimension of the readout layer, default to 1000
+    last_layer_dim: int, the dimension of the last linear layer, default to 1024
+    heads: int, the number of heads in the multi-head attention layer, default to 16
+    mlp_dim: int, the dimension of the MLP layer, default to 2048
+    activation: str, the activation function to be used in each layer, default to 'relu'
+    dropout_ratio: float, the dropout ratio, default to 0.0
+    emb_dropout_ratio: float, the dropout ratio for the embedding layer, default to 0.1
+    num_hidden_dense_layers: int, the number of HIDDEN dense layers after the final readout layer of ViT, default to 2
+    num_dense_units: int, the number of units in each HIDDEN dense layer, default to 512
+    """
+    def __init__(self, input_width: int, input_height: int, patch_size: int, latent_feature_dim: int, num_blocks: int, 
+                 readout_layer_dim: int = 1000, last_linear_dim: int = 1024, heads: int = 16, mlp_dim: int = 2048, 
+                 activation: str = 'relu', dropout_ratio: float = 0.0, emb_dropout_ratio: float = 0.1, 
+                 num_upper_hidden_dense_layers: int = 2, num_upper_dense_units: int = 512) -> None:
+        self.input_size = max(input_width, input_height)
+        self.patch_size = patch_size
+        self.readout_layer_dim = readout_layer_dim
+        self.last_linear_dim = last_linear_dim
+        self.heads = heads
+        self.mlp_dim = mlp_dim
+        self.emb_dropout_ratio = emb_dropout_ratio
+        self.num_upper_hidden_dense_layers = num_upper_hidden_dense_layers
+        self.num_upper_dense_units = num_upper_dense_units
+        super(ImplicitViTKernel, self).__init__(latent_feature_dim, num_blocks, activation, dropout_ratio)
+        self._validate_inputs()
+        self._build_layers()
+    
+    def _validate_inputs(self) -> None:
+        assert self.input_size > 0, "The input size must be positive."
+        assert self.patch_size > 0, "The patch size must be positive."
+        assert self.input_size % self.patch_size == 0, "The image size must be divisible by the patch size."
+        assert self.readout_layer_dim > 0, "The dimension of the readout layer must be positive."
+        assert self.last_linear_dim > 0, "The dimension of the last linear layer must be positive."
+        assert self.heads > 0, "The number of heads in the multi-head attention layer must be positive."
+        assert self.mlp_dim > 0, "The dimension of MLP layers must be positive."
+        assert 0 <= self.emb_dropout_ratio < 1, "The dropout ratio for the embedding layer must be in the range [0, 1)."
+        super(ImplicitViTKernel, self)._validate_inputs()
+    
+    def _build_vit(self) -> None:
+        """
+        Build the Vision Transformer (ViT) model
+        """
+        self.vit = vitorch.ViT(
+            image_size=self.input_size, 
+            patch_size=self.patch_size, 
+            num_classes=self.readout_layer_dim, 
+            dim=self.last_linear_dim, 
+            depth=self.num_blocks, 
+            heads=self.heads, 
+            mlp_dim=self.mlp_dim, 
+            dropout=self.dropout_ratio, 
+            emb_dropout=self.emb_dropout_ratio
+        )
+    
+    def _build_layers(self) -> None:
+        self._build_vit()
+        self.dense_blocks: nn.ModuleList = nn.ModuleList()
+        if self.num_upper_hidden_dense_layers == 0:
+            self.dense_blocks.append(
+                nn.Linear(self.readout_layer_dim, self.latent_feature_dim)
+            )
+        else:
+            self.dense_blocks.append(
+                self._build_dense_block(self.readout_layer_dim, self.num_upper_dense_units, 
+                                        self.activation, self.dropout_ratio)
+            )
+            for _ in range(self.num_upper_hidden_dense_layers - 1):
+                self.dense_blocks.append(
+                    self._build_dense_block(self.num_upper_dense_units, self.num_upper_dense_units, 
+                                            self.activation, self.dropout_ratio)
+                )
+            self.dense_blocks.append(
+                nn.Linear(self.num_upper_dense_units, self.latent_feature_dim)
+            )
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.vit(x)
+        for dense_block in self.dense_blocks:
+            x = dense_block(x)
+        return x
+
+class ImplicitDeepViTKernel(ImplicitViTKernel):
+    """
+    Implicit kernel implied by a Deep Vision Transformer (DeepViT)
+    """
+    def __init__(self, input_width: int, input_height: int, patch_size: int, latent_feature_dim: int, num_blocks: int, 
+                 readout_layer_dim: int = 1000, last_linear_dim: int = 1024, heads: int = 16, mlp_dim: int = 2048, 
+                 activation: str = 'relu', dropout_ratio: float = 0.0, emb_dropout_ratio: float = 0.1, 
+                 num_upper_hidden_dense_layers: int = 2, num_upper_dense_units: int = 512) -> None:
+        super(ImplicitDeepViTKernel, self).__init__(input_width, input_height, patch_size, latent_feature_dim, num_blocks, 
+                                                    readout_layer_dim, last_linear_dim, heads, mlp_dim, activation, dropout_ratio, 
+                                                    emb_dropout_ratio, num_upper_hidden_dense_layers, num_upper_dense_units)
+    
+    def _build_vit(self) -> None:
+        self.vit = vitorch.deepvit.DeepViT(
+            image_size=self.input_size, 
+            patch_size=self.patch_size, 
+            num_classes=self.readout_layer_dim, 
+            dim=self.last_linear_dim, 
+            depth=self.num_blocks, 
+            heads=self.heads, 
+            mlp_dim=self.mlp_dim, 
+            dropout=self.dropout_ratio, 
+            emb_dropout=self.emb_dropout_ratio
+        )
 
 # ########################################################################################
 # MIT License

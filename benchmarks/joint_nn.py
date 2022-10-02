@@ -3,6 +3,7 @@
 
 import torch
 from torch import nn
+import vit_pytorch as vitorch
 from abc import ABC, abstractmethod
 from kernels.constants import *
 
@@ -83,7 +84,7 @@ class JointDenseNet(JointNN):
     num_units: int, the number of units (width) in each HIDDEN dense layer
     aug_feature_dim: int, dimension of the augmented feature to be concatenated with the latent feature from 
         the dense network
-    latent_feature_dim: int, the dimension of feature in the latent space, default to 1000
+    readout_layer_dim: int, the dimension of the readout layer, default to 1000
     activation: str, the activation function to be used in each layer, default to 'relu'
     dropout_ratio: float, the dropout ratio for dropout layers, default to 0.0
     num_upper_hidden_dense_layers: int, the number of HIDDEN dense layers after the concatenated latent feature
@@ -98,13 +99,13 @@ class JointDenseNet(JointNN):
     from satellite imagery." Science of Remote Sensing 5 (2022): 100052.
     """
     def __init__(self, input_dim: int, num_blocks: int, num_layers_per_block: int, num_units: int, aug_feature_dim: int, 
-                 latent_feature_dim: int = 1000,  activation: str = 'relu', dropout_ratio: float = 0.0,
+                 readout_layer_dim: int = 1000,  activation: str = 'relu', dropout_ratio: float = 0.0,
                  num_upper_hidden_dense_layers: int = 2, num_upper_dense_units: int = 512) -> None:
         self.input_dim = input_dim
         self.num_layers_per_block: int = num_layers_per_block
         self.num_units: int = num_units
         self.aug_feature_dim = aug_feature_dim
-        self.latent_feature_dim = latent_feature_dim
+        self.readout_layer_dim = readout_layer_dim
         self.num_upper_hidden_dense_layers = num_upper_hidden_dense_layers
         self.num_upper_dense_units = num_upper_dense_units
         super(JointDenseNet, self).__init__(num_blocks, activation, dropout_ratio)
@@ -116,6 +117,7 @@ class JointDenseNet(JointNN):
         assert self.num_layers_per_block > 0, "The number of layers per block should be positive."
         assert self.num_units > 0, "The number of units should be positive."
         assert self.aug_feature_dim > 0, "The dimension of augmented feature should be positive."
+        assert self.readout_layer_dim > 0, "The dimension of readout layer should be positive."
         assert self.num_upper_hidden_dense_layers >= 0, "The number of hidden dense layers after the concatenated latent \
             feature should be non-negative."
         assert self.num_upper_dense_units > 0, "The number of units in the hidden dense layers after the concatenated latent \
@@ -133,7 +135,7 @@ class JointDenseNet(JointNN):
         self.lower_dense_blocks: nn.ModuleList = nn.ModuleList()
         self.upper_dense_blocks: nn.ModuleList = nn.ModuleList()
         if self.num_blocks == 0:
-            self.lower_dense_blocks.append(nn.Linear(self.input_dim, self.latent_feature_dim + self.aug_feature_dim))
+            self.lower_dense_blocks.append(nn.Linear(self.input_dim, self.readout_layer_dim + self.aug_feature_dim))
         else:
             self.lower_dense_blocks.append(
                 self._build_dense_block(self.input_dim, self.num_units, self.activation, self.dropout_ratio)
@@ -146,12 +148,12 @@ class JointDenseNet(JointNN):
                         nn.Dropout(self.dropout_ratio)
                     )
                 )
-            self.lower_dense_blocks.append(nn.Linear(self.num_units, self.latent_feature_dim + self.aug_feature_dim))
+            self.lower_dense_blocks.append(nn.Linear(self.num_units, self.readout_layer_dim + self.aug_feature_dim))
         if self.num_upper_hidden_dense_layers == 0:
-            self.upper_dense_blocks.append(nn.Linear(self.latent_feature_dim + self.aug_feature_dim, 1))
+            self.upper_dense_blocks.append(nn.Linear(self.readout_layer_dim + self.aug_feature_dim, 1))
         else:
             self.upper_dense_blocks.append(
-                self._build_dense_block(self.latent_feature_dim + self.aug_feature_dim, self.num_upper_dense_units,
+                self._build_dense_block(self.readout_layer_dim + self.aug_feature_dim, self.num_upper_dense_units,
                                         self.activation, self.dropout_ratio)
             )
             for _ in range(self.num_upper_hidden_dense_layers - 1):
@@ -292,6 +294,142 @@ class JointConvNet(JointNN):
         for dense_block in self.dense_blocks:
             x = dense_block(x)
         return x
+
+class JointViT(JointNN):
+    """
+    Benchmark model: VisionTransformer (ViT) joint with other ML models (e.g. random forest, SVM, etc.)
+    The feature returned by the ML model is passed in through the `aug_feature` argument in the forward pass
+    and its dimension should be specified by the `aug_feature_dim` argument. The aug_feature will be concatenated
+    to the latent feature from the convolutional network.
+
+    Arguments
+    --------------
+    input_width: int, the width of input tensor
+    input_height: int, the height of input tensor
+    patch_size: int, the size of one image patch. The image will be divided into patches of size (patch_size, patch_size).
+        Must be divisible by max(input_width, input_height).
+    num_blocks: int, the number of Transformer blocks
+    aug_feature_dim: int, the dimension of the augmented feature
+    readout_layer_dim: int, the dimension of the readout layer, default to 1000
+    last_layer_dim: int, the dimension of the last linear layer, default to 1024
+    heads: int, the number of heads in the multi-head attention layer, default to 16
+    mlp_dim: int, the dimension of MLP layers, default to 2048
+    activation: str, the activation function to be used in each layer, default to 'relu'
+    dropout_ratio: float, the dropout ratio, default to 0.0
+    emb_dropout_ratio: float, the dropout ratio for the embedding layer, default to 0.1
+    num_upper_hidden_dense_layers: int, the number of HIDDEN dense layers after the concatenated latent feature
+    num_upper_dense_units: int, the number of units (width) in each HIDDEN dense layer after the concatenated
+        latent feature
+    pretrained_model_state_dict_dir: str, the directory of the pretrained model state dictionary
+    """
+    def __init__(self, input_width: int, input_height: int, patch_size: int, num_blocks: int, aug_feature_dim: int, 
+                 readout_layer_dim: int = 1000, last_linear_dim: int = 1024, heads: int = 16, mlp_dim: int = 2048, 
+                 activation: str = 'relu', dropout_ratio: float = 0.0, emb_dropout_ratio: float = 0.1, 
+                 num_upper_hidden_dense_layers: int = 2, num_upper_dense_units: int = 512) -> None:
+        self.input_size = max(input_width, input_height)
+        self.patch_size = patch_size
+        self.aug_feature_dim = aug_feature_dim
+        self.readout_layer_dim = readout_layer_dim
+        self.last_linear_dim = last_linear_dim
+        self.heads = heads
+        self.mlp_dim = mlp_dim
+        self.emb_dropout_ratio = emb_dropout_ratio
+        self.num_upper_hidden_dense_layers = num_upper_hidden_dense_layers
+        self.num_upper_dense_units = num_upper_dense_units
+        super(JointViT, self).__init__(num_blocks, activation, dropout_ratio)
+        self._validate_inputs()
+        self._build_layers()
+    
+    def _validate_inputs(self) -> None:
+        assert self.input_size > 0, "The input size must be positive."
+        assert self.patch_size > 0, "The patch size must be positive."
+        assert self.input_size % self.patch_size == 0, "The image size must be divisible by the patch size."
+        assert self.aug_feature_dim > 0, "The dimension of the augmented feature must be positive."
+        assert self.readout_layer_dim > 0, "The dimension of the readout layer must be positive."
+        assert self.last_linear_dim > 0, "The dimension of the last linear layer must be positive."
+        assert self.heads > 0, "The number of heads in the multi-head attention layer must be positive."
+        assert self.mlp_dim > 0, "The dimension of MLP layers must be positive."
+        assert 0 <= self.emb_dropout_ratio < 1, "The dropout ratio for the embedding layer must be in the range [0, 1)."
+        super(JointViT, self)._validate_inputs()
+    
+    def _build_vit(self) -> None:
+        """
+        Build the Vision Transformer (ViT) model
+        """
+        self.vit = vitorch.ViT(
+            image_size=self.input_size, 
+            patch_size=self.patch_size, 
+            num_classes=self.readout_layer_dim, 
+            dim=self.last_linear_dim, 
+            depth=self.num_blocks, 
+            heads=self.heads, 
+            mlp_dim=self.mlp_dim, 
+            dropout=self.dropout_ratio, 
+            emb_dropout=self.emb_dropout_ratio
+        )
+    
+    def _build_layers(self) -> None:
+        self._build_vit()
+        self.dense_blocks: nn.ModuleList = nn.ModuleList()
+        if self.num_upper_hidden_dense_layers == 0:
+            self.dense_blocks.append(
+                nn.Linear(self.readout_layer_dim + self.aug_feature_dim, 1)
+            )
+        else:
+            self.dense_blocks.append(
+                self._build_dense_block(self.readout_layer_dim + self.aug_feature_dim, self.num_upper_dense_units, 
+                                        self.activation, self.dropout_ratio)
+            )
+            for _ in range(self.num_upper_hidden_dense_layers - 1):
+                self.dense_blocks.append(
+                    self._build_dense_block(self.num_upper_dense_units, self.num_upper_dense_units, 
+                                            self.activation, self.dropout_ratio)
+                )
+            self.dense_blocks.append(
+                nn.Linear(self.num_upper_dense_units, 1)
+            )
+    
+    def forward(self, x: torch.Tensor, aug_feature: torch.Tensor) -> torch.Tensor:
+        x = self.vit(x)
+        x = torch.cat([x, aug_feature], dim=1).float()
+        for dense_block in self.dense_blocks:
+            x = dense_block(x)
+        return x
+    
+    def load_pretrained_encoder_weights(self, state_dict_dir: str) -> None:
+        """
+        Load the pretrained weights for the ViT encoder
+        """
+        self.vit.load_state_dict(torch.load(state_dict_dir))
+
+class JointDeepViT(JointViT):
+    """
+    Benchmark model: Deep VisionTransformer (DeepViT) joint with other ML models (e.g. random forest, SVM, etc.)
+    The feature returned by the ML model is passed in through the `aug_feature` argument in the forward pass
+    and its dimension should be specified by the `aug_feature_dim` argument. The aug_feature will be concatenated
+    to the latent feature from the convolutional network.
+    """
+    def __init__(self, input_width: int, input_height: int, patch_size: int, num_blocks: int, aug_feature_dim: int, 
+                 readout_layer_dim: int = 1000, last_linear_dim: int = 1024, heads: int = 16, mlp_dim: int = 2048, 
+                 activation: str = 'relu', dropout_ratio: float = 0.0, emb_dropout_ratio: float = 0.1, 
+                 num_upper_hidden_dense_layers: int = 2, num_upper_dense_units: int = 512) -> None:
+        super(JointDeepViT, self).__init__(input_width, input_height, patch_size, num_blocks, aug_feature_dim, 
+                                           readout_layer_dim, last_linear_dim, heads, mlp_dim, activation, 
+                                           dropout_ratio, emb_dropout_ratio, num_upper_hidden_dense_layers, 
+                                           num_upper_dense_units)
+    
+    def _build_vit(self) -> None:
+        self.vit = vitorch.deepvit.DeepViT(
+            image_size=self.input_size, 
+            patch_size=self.patch_size, 
+            num_classes=self.readout_layer_dim, 
+            dim=self.last_linear_dim, 
+            depth=self.num_blocks, 
+            heads=self.heads, 
+            mlp_dim=self.mlp_dim, 
+            dropout=self.dropout_ratio, 
+            emb_dropout=self.emb_dropout_ratio
+        )
 
 # ########################################################################################
 # MIT License

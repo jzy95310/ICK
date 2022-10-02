@@ -1,7 +1,11 @@
 # train_benchmarks.py: a file containing helper functions for data processing, model creation, and training of benchmark models
 # SEE LICENSE STATEMENT AT THE END OF THE FILE
 
+import os, sys
 import numpy as np
+import logging
+from torch import nn
+import vit_pytorch as vitorch
 from typing import Tuple, Union, Dict, Callable
 from utils.helpers import train_val_test_split
 from utils.constants import *
@@ -73,6 +77,58 @@ def create_generators_from_data_for_joint_nn(x_train: np.ndarray, aug_feature_tr
         val_data_generator = None
     
     return {TRAIN: train_data_generator, VAL: val_data_generator, TEST: test_data_generator}
+
+def pretrain_encoder_with_mae(encoder: nn.Module, dataloader: torch.utils.data.DataLoader, masking_ratio: float = 0.75, 
+                              epochs: int = 500, decoder_dim: int = 512, decoder_depth: int = 6, patience: int = 5, 
+                              data_idx: int = 0, model_name: str = 'encoder.pt', device: torch.device = torch.device('cpu'), 
+                              logger: logging.Logger = logging.getLogger("Trainer")) -> None:
+    """
+    Pretrain the passed-in encoder with Masked Autoencoder (MAE) and save the pre-trained encoder
+
+    Arguments
+    --------------
+    encoder: nn.Module, the encoder to be pretrained
+    dataloader: torch.utils.data.DataLoader, the dataloader for the pre-training
+    masking_ratio: float, the masking ratio of MAE, default to 0.75
+    epochs: int, the number of epochs for pre-training, default to 500
+    decoder_dim: int, the dimension of the decoder, default to 500
+    decoder_depth: int, the depth of the decoder, default to 6
+    patience: int, the patience for early stopping, default to 5
+    data_idx: int, the index of the data in batch to train the MAE, default to 0
+    model_name: str, the name of the saved pre-trained model
+    device: torch.device, the device to run the pre-training
+    logger: logging.Logger, the logger for logging the pre-training process
+    """
+    logger.setLevel(logging.INFO)
+    if logger.hasHandlers():
+        logger.handlers.clear()
+    logger.addHandler(logging.StreamHandler(stream=sys.stdout))
+    mae = vitorch.MAE(
+        encoder=encoder,
+        masking_ratio=masking_ratio, 
+        decoder_dim=decoder_dim,
+        decoder_depth=decoder_depth
+    ).to(device)
+    loss_smallest, early_stopping_count = 1e9, 0
+    logger.info("Start pre-training:")
+    for epoch in range(epochs):
+        logger.info("Pre-training epoch {}".format(epoch))
+        for batch in dataloader:
+            data = batch[data_idx].to(device)
+            loss = mae(data)
+            loss.backward()
+        logger.info("Pre-training loss: {}".format(loss))
+        if loss < loss_smallest:
+            early_stopping_count = 0
+            loss_smallest = loss
+            if not os.path.exists('./pretrained_encoder_checkpoints'):
+                os.makedirs('./pretrained_encoder_checkpoints')
+            torch.save(mae.encoder.state_dict(), './pretrained_encoder_checkpoints/pretrained_{}'.format(model_name))
+        else:
+            early_stopping_count += 1
+            if early_stopping_count > patience:
+                print('Early stopping criterion reached. Exiting...')
+                break
 
 # ########################################################################################
 # MIT License

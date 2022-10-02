@@ -221,7 +221,28 @@ class JointNNEnsembleTrainer(EnsembleTrainer):
         train_loss = self.loss_fn(y_train_pred, y_train_true).item()
         return train_loss
     
-    def predict(self) -> None:
+    def validate(self) -> None:
+        """
+        Evaluate the joint NN ensemble on the validation data
+        """
+        y_val_pred = [torch.empty(0).to(self.device) for _ in range(len(self.model))]
+        y_val_true = torch.empty(0).to(self.device)
+
+        with torch.no_grad():
+            for i in range(len(self.model)):
+                self.model[i].eval()
+                for batch in self.data_generators[VAL]:
+                    x, aug_feature, y, y_pred_aug_feature = self._assign_device_to_data(batch)
+                    residual = torch.squeeze(self.model[i](x, aug_feature)).float()
+                    y_pred = y_pred_aug_feature * self.scale_factor + residual
+                    y_val_pred[i] = torch.cat((y_val_pred[i], y_pred), dim=0)
+                    if i == 0:
+                        y_val_true = torch.cat((y_val_true, y), dim=0)
+        y_val_pred_mean = torch.mean(torch.stack(y_val_pred, dim=0), dim=0)
+        val_loss = self.loss_fn(y_val_pred_mean, y_val_true).item()
+        return val_loss
+    
+    def predict(self) -> Tuple:
         """
         Evaluate the joint NN ensemble on the test data
         """
