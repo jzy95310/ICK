@@ -87,7 +87,8 @@ def create_generators_from_data(x_train: Union[List[np.ndarray], np.ndarray], y_
     
     return {TRAIN: train_data_generator, VAL: val_data_generator, TEST: test_data_generator}
 
-def calculate_stats(pred_vals_mean: np.ndarray, true_vals: np.ndarray, pred_vals_std: Union[np.ndarray, None] = None) -> Tuple:
+def calculate_stats(pred_vals_mean: np.ndarray, true_vals: np.ndarray, pred_vals_std: Union[np.ndarray, None] = None,
+                    data_save_path: str = None) -> Tuple:
     """
     Calculate the R-squared values, RMSE, MAE, and mean standardized log loss (MSLL) for evaluating the predictions
     
@@ -96,7 +97,16 @@ def calculate_stats(pred_vals_mean: np.ndarray, true_vals: np.ndarray, pred_vals
     pred_vals_mean: np.ndarray, the mean of the predicted values
     true_vals: np.ndarray, the true values
     pred_vals_std: Union[np.ndarray, None], the standard deviation of the predicted values
+    data_save_path: str, the path to save the passed-in data
     """
+    if data_save_path is not None:
+        if not os.path.exists(os.path.dirname(data_save_path)):
+            os.makedirs(os.path.dirname(data_save_path))
+        data_dict = {'true_vals': true_vals, 'pred_vals': pred_vals_mean}
+        if pred_vals_std is not None:
+            data_dict['pred_vals_std'] = pred_vals_std
+        with open(data_save_path, 'wb') as fp:
+            pkl.dump(data_dict, fp)
     spearmanr = stats.spearmanr(pred_vals_mean, true_vals)[0]
     pearsonr = stats.pearsonr(pred_vals_mean, true_vals)[0]
     rmse = np.sqrt(metrics.mean_squared_error(true_vals, pred_vals_mean))
@@ -108,8 +118,8 @@ def calculate_stats(pred_vals_mean: np.ndarray, true_vals: np.ndarray, pred_vals
     return res
 
 def plot_pred_vs_true_vals(pred_vals: np.ndarray, true_vals: np.ndarray, x_label: str, y_label: str, title: str = None, 
-                           data_save_path: str = None, fig_save_path: str = None, lower_bound: float = 0.0, 
-                           upper_bound: float = 1000.0, margin: float = 20.0, **kwargs) -> None:
+                           fig_save_path: str = None, lower_bound: float = 0.0, upper_bound: float = 600.0, margin: float = 20.0, 
+                           **kwargs) -> None:
     """
     Plot the predicted values against the true values
     
@@ -120,7 +130,6 @@ def plot_pred_vs_true_vals(pred_vals: np.ndarray, true_vals: np.ndarray, x_label
     x_label: str, the label for the x-axis
     y_label: str, the label for the y-axis
     title: str, the title of the plot
-    data_save_path: str, the path to save the data of the plot
     fig_save_path: str, the path to save the plot
     lower_bound: float, the lower-left coordinates (both x and y) of the plot
     upper_bound: float, the upper-right coordinates (both x and y) of the plot
@@ -142,13 +151,7 @@ def plot_pred_vs_true_vals(pred_vals: np.ndarray, true_vals: np.ndarray, x_label
     ax.tick_params(labelsize = 28)
     for i, (key, val) in enumerate(kwargs.items()):
         ax.text(0.02, 0.98-i*0.08, f'{key} = {val:.2f}', ha='left', va='top', color='black', weight='roman', 
-                fontsize=30, transform=ax.transAxes)
-    if data_save_path is not None:
-        if not os.path.exists(os.path.dirname(data_save_path)):
-            os.makedirs(os.path.dirname(data_save_path))
-        data_dict = {'true_vals': true_vals, 'pred_vals': pred_vals}
-        with open(data_save_path, 'wb') as fp:
-            pkl.dump(data_dict, fp)
+                fontsize=30, transform=ax.transAxes)     
     if fig_save_path is not None:
         if not os.path.exists(os.path.dirname(fig_save_path)):
             os.makedirs(os.path.dirname(fig_save_path))

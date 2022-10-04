@@ -109,6 +109,7 @@ class BaseTrainer(ABC):
             res_dict["MSLL"] = res[4]
         for k, v in res_dict.items():
             self.logger.info("{}: {}".format(k, v))
+        self.logger.info("\n")
         return res_dict
     
     def _plot_predictions(self, pred_mean: np.ndarray, target: np.ndarray, stats: Dict = None) -> None:

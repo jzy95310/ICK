@@ -65,8 +65,8 @@ def train_ick_ensemble(data_generators, input_width, input_height, patch_size, l
         'ImplicitNystromKernel': {
             'kernel_func': periodic_kernel_nys, 
             'params': ['std','period','lengthscale','noise'], 
-            'vals': [2.,365.,0.5,0.5], 
-            'trainable': [True,True,True,True], 
+            'vals': [1.,365.,0.25,0.5], 
+            'trainable': [True,False,True,True], 
             'alpha': 1e-5, 
             'num_inducing_points': latent_feature_dim, 
             'nys_space': [[0.,365.]]
@@ -112,14 +112,14 @@ def main(args):
     spearmanr, pearsonr, rmse, mae, msll_score = calculate_stats(
         y_test_pred_mean, 
         y_test_true, 
-        y_test_pred_std
+        y_test_pred_std, 
+        data_save_path='./Results/ViT_ICKy_ensemble_sorted_by_time.pkl', 
     )
     plot_pred_vs_true_vals(
         y_test_pred_mean, 
         y_test_true, 
-        'Mean of predicted PM$_{2.5}$', 
-        'True PM$_{2.5}$',
-        data_save_path='./Results/ViT_ICKy_ensemble_sorted_by_time.pkl', 
+        'Mean of predicted PM$_{2.5}$ ($\mu $g m$^{-3}$)', 
+        'True PM$_{2.5}$ ($\mu $g m$^{-3}$)',
         fig_save_path='./Figures/ViT_ICKy_ensemble_sorted_by_time.pdf', 
         Spearman_R=spearmanr, 
         Pearson_R=pearsonr, 

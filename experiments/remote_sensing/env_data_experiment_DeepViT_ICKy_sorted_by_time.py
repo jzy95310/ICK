@@ -65,8 +65,8 @@ def train_ick(data_generators, input_width, input_height, patch_size, latent_fea
         'ImplicitNystromKernel': {
             'kernel_func': periodic_kernel_nys, 
             'params': ['std','period','lengthscale','noise'], 
-            'vals': [2.,365.,0.5,0.5], 
-            'trainable': [True,True,True,True], 
+            'vals': [1.,365.,0.25,0.5], 
+            'trainable': [True,False,True,True], 
             'alpha': 1e-5, 
             'num_inducing_points': latent_feature_dim, 
             'nys_space': [[0.,365.]]
@@ -109,14 +109,14 @@ def main(args):
     )
     spearmanr, pearsonr, rmse, mae = calculate_stats(
         y_test_pred, 
-        y_test_true
+        y_test_true, 
+        data_save_path='./Results/DeepViT_ICKy_sorted_by_time.pkl', 
     )
     plot_pred_vs_true_vals(
         y_test_pred, 
         y_test_true, 
-        'Predicted PM$_{2.5}$', 
-        'True PM$_{2.5}$',
-        data_save_path='./Results/DeepViT_ICKy_sorted_by_time.pkl', 
+        'Predicted PM$_{2.5}$ ($\mu $g m$^{-3}$)', 
+        'True PM$_{2.5}$ ($\mu $g m$^{-3}$)',
         fig_save_path='./Figures/DeepViT_ICKy_sorted_by_time.pdf', 
         Spearman_R=spearmanr, 
         Pearson_R=pearsonr, 

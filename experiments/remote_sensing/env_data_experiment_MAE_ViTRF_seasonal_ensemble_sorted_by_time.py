@@ -86,7 +86,7 @@ def train_joint_model_ensemble(data_generators, input_width, input_height, patch
         data_generators['test'].dataset
     ])
     dataloader = DataLoader(dataset, batch_size=128, shuffle=False)
-    encoder_name = 'vit.pt'
+    encoder_name = 'vit_baselearner.pt'
     pretrain_encoder_with_mae(
         ensemble[0].vit, 
         dataloader, 
@@ -135,14 +135,14 @@ def main(args):
     spearmanr, pearsonr, rmse, mae, msll_score = calculate_stats(
         y_test_pred_mean, 
         y_test_true, 
-        y_test_pred_std
+        y_test_pred_std, 
+        data_save_path='./Results/MAE_ViTRF_seasonal_ensemble_sorted_by_time.pkl', 
     )
     plot_pred_vs_true_vals(
         y_test_pred_mean, 
         y_test_true, 
-        'Mean of predicted PM$_{2.5}$', 
-        'True PM$_{2.5}$',
-        data_save_path='./Results/MAE_ViTRF_seasonal_ensemble_sorted_by_time.pkl', 
+        'Mean of predicted PM$_{2.5}$ ($\mu $g m$^{-3}$)', 
+        'True PM$_{2.5}$ ($\mu $g m$^{-3}$)',
         fig_save_path='./Figures/MAE_ViTRF_seasonal_ensemble_sorted_by_time.pdf', 
         Spearman_R=spearmanr, 
         Pearson_R=pearsonr, 

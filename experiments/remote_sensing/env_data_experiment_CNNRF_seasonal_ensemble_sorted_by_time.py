@@ -116,14 +116,14 @@ def main(args):
     spearmanr, pearsonr, rmse, mae, msll_score = calculate_stats(
         y_test_pred_mean, 
         y_test_true, 
-        y_test_pred_std
+        y_test_pred_std, 
+        data_save_path='./Results/CNNRF_seasonal_ensemble_sorted_by_time.pkl'
     )
     plot_pred_vs_true_vals(
         y_test_pred_mean, 
         y_test_true, 
-        'Mean of predicted PM$_{2.5}$', 
-        'True PM$_{2.5}$',
-        data_save_path='./Results/CNNRF_seasonal_ensemble_sorted_by_time.pkl', 
+        'Mean of predicted PM$_{2.5}$ ($\mu $g m$^{-3}$)', 
+        'True PM$_{2.5}$ ($\mu $g m$^{-3}$)',
         fig_save_path='./Figures/CNNRF_seasonal_ensemble_sorted_by_time.pdf', 
         Spearman_R=spearmanr, 
         Pearson_R=pearsonr, 

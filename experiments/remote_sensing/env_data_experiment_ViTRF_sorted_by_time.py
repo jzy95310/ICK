@@ -113,14 +113,14 @@ def main(args):
     )
     spearmanr, pearsonr, rmse, mae = calculate_stats(
         y_test_pred, 
-        y_test_true
+        y_test_true, 
+        data_save_path='./Results/ViTRF_sorted_by_time.pkl', 
     )
     plot_pred_vs_true_vals(
         y_test_pred, 
         y_test_true, 
-        'Predicted PM$_{2.5}$', 
-        'True PM$_{2.5}$',
-        data_save_path='./Results/ViTRF_sorted_by_time.pkl', 
+        'Predicted PM$_{2.5}$ ($\mu $g m$^{-3}$)', 
+        'True PM$_{2.5}$ ($\mu $g m$^{-3}$)',
         fig_save_path='./Figures/ViTRF_sorted_by_time.pdf', 
         Spearman_R=spearmanr, 
         Pearson_R=pearsonr, 
@@ -134,7 +134,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('--input_height', type=int, default=224)
     arg_parser.add_argument('--patch_size', type=int, default=32)
     arg_parser.add_argument('--num_blocks', type=int, default=2)
-    arg_parser.add_argument('--lr', type=float, default=1e-6)
+    arg_parser.add_argument('--lr', type=float, default=5e-6)
     arg_parser.add_argument('--weight_decay', type=float, default=0.1)
     arg_parser.add_argument('--epochs', type=int, default=250)
     arg_parser.add_argument('--patience', type=int, default=20)
