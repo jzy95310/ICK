@@ -114,7 +114,7 @@ class ImplicitNystromKernel(ImplicitKernel):
         super(ImplicitNystromKernel, self)._validate_inputs()
         assert self.num_inducing_points > 0, "The number of inducing points should be greater than 0."
         for i in range(len(self.nys_space)):
-            assert len(self.nys_space[i]) == 2, "The input space for Nystrom approximation should be a list of tuples of ."
+            assert len(self.nys_space[i]) == 2, "The input space for Nystrom approximation should be a list of length 2."
             assert self.nys_space[i][0] < self.nys_space[i][1], "The lower bound of the input space should be less than the upper bound."
 
     def forward(self, input_feature: torch.Tensor) -> torch.Tensor:

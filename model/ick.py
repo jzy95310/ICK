@@ -72,10 +72,10 @@ class ICK(nn.Module):
                 latent_features = torch.cat((latent_features, new_latent_feature), dim=0)
         return latent_features
     
-class NonseparableICK(nn.Module):
+class AdditiveICK(nn.Module):
     """
-    Class definition of the Nonseparable Implicit Composite Kernel (ICK)
-    This class is used to construct ICK which models a GP with non-separable kernel
+    Class definition of the Additive Implicit Composite Kernel (ICK)
+    This class is used to construct ICK which models a GP with non-separable kernel using a summation formulation
 
     Arguments
     --------------
@@ -91,7 +91,7 @@ class NonseparableICK(nn.Module):
     """
     def __init__(self, components: List[ICK], component_assignment: List[List[int]], coeffs: List[float] = None, 
                  weighted: List[bool] = None) -> None:
-        super(NonseparableICK, self).__init__()
+        super(AdditiveICK, self).__init__()
         self.components: nn.ModuleList = nn.ModuleList(components)
         self.component_assignment: List[List[int]] = component_assignment
         self.coeffs: List[float] = [1.0] * len(self.components) if coeffs is None else coeffs
