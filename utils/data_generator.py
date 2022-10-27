@@ -35,7 +35,7 @@ class DataGenerator(Dataset):
         """
         if not isinstance(self.x,List) and not isinstance(self.x,np.ndarray):
             raise TypeError("x must be a list of numpy arrays or a single numpy array")
-        if len(set(map(len,self.x+[self.y]))) > 1:
+        if len(set(map(len,self.x+[self.y] if isinstance(self.x,List) else [self.x, self.y]))) > 1:
             raise ValueError("All sources of information (including the target) must have the same number of samples.")
         # Make sure all sources of information in x are at least 2D and in correct data type
         if isinstance(self.x, list):
@@ -58,9 +58,9 @@ class DataGenerator(Dataset):
                 return [item[idx] for item in self.x], self.y[idx]
         else:
             if self.x_transform is not None:
-                return self.x_transform(self.x[idx].astype(np.uint8)) if len(self.x[idx].shape) >= 3 else self.x[idx], self.y[idx]
+                return [self.x_transform(self.x[idx].astype(np.uint8)) if len(self.x[idx].shape) >= 3 else self.x[idx]], self.y[idx]
             else:
-                return self.x[idx], self.y[idx]
+                return [self.x[idx]], self.y[idx]
 
 def create_ick_data_generator(x: Union[List[np.ndarray], np.ndarray], y: np.ndarray, shuffle_dataloader: bool, batch_size: int, 
                               x_transform: Union[Callable, None] = None) -> DataLoader:

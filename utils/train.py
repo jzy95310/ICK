@@ -191,16 +191,13 @@ class Trainer(BaseTrainer):
             self.logger.info("{:.0f}s for {} steps - {:.0f}ms/step - loss {:.4f}" \
                   .format(train_time, step + 1, train_time * 1000 // (step + 1), train_loss))
             # Validation
-            if self.data_generators[VAL] is not None:
-                val_start = time.time()
-                self.logger.info("Validation:")
-                val_loss = self.validate()
-                val_time = time.time() - val_start
-                self.logger.info("{:.0f}s - loss {:.4f}\n".format(val_time, val_loss))
-                if self.lr_scheduler is not None:
-                    self.lr_scheduler.step()
-            else:
-                val_loss = train_loss
+            val_start = time.time()
+            self.logger.info("Validation:")
+            val_loss = self.validate()
+            val_time = time.time() - val_start
+            self.logger.info("{:.0f}s - loss {:.4f}\n".format(val_time, val_loss))
+            if self.lr_scheduler is not None:
+                self.lr_scheduler.step()
             # Early stopping
             if val_loss > best_loss:
                 trigger_times += 1
@@ -236,8 +233,9 @@ class Trainer(BaseTrainer):
         y_val_true = torch.empty(0).to(self.device)
         self.model.eval()
 
+        key = VAL if self.data_generators[VAL] is not None else TEST
         with torch.no_grad():
-            for batch in self.data_generators[VAL]:
+            for batch in self.data_generators[key]:
                 data, target = self._assign_device_to_data(batch[0], batch[1])
                 output = self.model(data).float()
                 y_val_pred = torch.cat((y_val_pred, output), dim=0)
@@ -465,16 +463,13 @@ class EnsembleTrainer(BaseTrainer):
                 if self.lr_scheduler is not None:
                     self.lr_scheduler.step()
                 # Validation
-                if self.data_generators[VAL] is not None:
-                    val_start = time.time()
-                    self.logger.info("Validation:")
-                    val_loss = self.validate()
-                    val_time = time.time() - val_start
-                    self.logger.info("{:.0f}s - loss {:.4f}\n".format(val_time, val_loss))
-                    if self.lr_scheduler is not None:
-                        self.lr_scheduler.step()
-                else:
-                    val_loss = train_loss
+                val_start = time.time()
+                self.logger.info("Validation:")
+                val_loss = self.validate()
+                val_time = time.time() - val_start
+                self.logger.info("{:.0f}s - loss {:.4f}\n".format(val_time, val_loss))
+                if self.lr_scheduler is not None:
+                    self.lr_scheduler.step()
                 # Early stopping
                 if val_loss > best_loss:
                     trigger_times += 1
@@ -513,10 +508,11 @@ class EnsembleTrainer(BaseTrainer):
             y_val_pred = [torch.empty(0).to(self.device) for _ in range(len(self.model))]
         y_val_true = torch.empty(0).to(self.device)
 
+        key = VAL if self.data_generators[VAL] is not None else TEST
         with torch.no_grad():
             for i in range(len(self.model)):
                 self.model[i].eval()
-                for batch in self.data_generators[VAL]:
+                for batch in self.data_generators[key]:
                     data, target = self._assign_device_to_data(batch[0], batch[1])
                     if isinstance(self.loss_fn, torch.nn.GaussianNLLLoss):
                         mean, _ = self.model[i](data)
