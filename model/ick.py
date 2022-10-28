@@ -6,6 +6,7 @@ from kernels.bnn import *
 from kernels.nn import *
 from kernels.nystrom import *
 from kernels.rff import *
+from utils.helpers import attach_single_output_dense_layer
 
 import math
 import torch
@@ -40,10 +41,19 @@ class ICK(nn.Module):
     def _build_kernels(self) -> None:
         """
         Build the kernels for each modality
+
+        Notes
+        --------------
+        By default, in ICK, the latent representations are combined using an inner product mechanism. However, when there is only 
+        one modality, the latent representation is simply the summation of the components of the latent representation. However,
+        if the kernel is an instance of ImplicitNNKernel, then a linear layer of dimension (latent_feature_dim, 1) will be 
+        attached to the final layer of the kernel.
         """
         self.kernels = nn.ModuleList()
         for i in range(self.num_modalities):
             self.kernels.append(eval(self.kernel_assignment[i])(**self.kernel_params[self.kernel_assignment[i]]))
+        if self.num_modalities == 1 and isinstance(self.kernels[0], ImplicitNNKernel):
+            self.kernels[0] = attach_single_output_dense_layer(self.kernels[0])
         if isinstance(self.kernels[0], (ImplicitNNKernel, ImplicitRFFKernel)):
             self.latent_feature_dim = self.kernels[0].latent_feature_dim
         elif isinstance(self.kernels[0], ImplicitNystromKernel):
@@ -138,43 +148,6 @@ class AdditiveICK(nn.Module):
                 else:
                     res += self.coeffs[i] * self.components[i](xs)
         return res
-
-class BayesianICK(ICK):
-    """
-    Class definition of the Bayesian Implicit Composite Kernel (Bayesian ICK)
-
-    Note
-    --------------
-    This version of Bayesian ICK is specifically designed for the case when the model is trained using Gaussian
-    negative log-likelihood loss. However, we did not show any of its experimental results due to inferior performance.
-    """
-    def __init__(self, kernel_assignment: List[str], kernel_params: Dict) -> None:
-        super(BayesianICK, self).__init__(kernel_assignment, kernel_params)
-        kernel_1_attr = list(self.kernel_params.values())[0]
-        latent_feature_dim = kernel_1_attr.get('latent_feature_dim', kernel_1_attr.get('num_inducing_points', -1))
-        assert latent_feature_dim > 0, "The latent feature dimension should be greater than 0."
-        self.fc = nn.Linear(latent_feature_dim, 1)
-        self.softplus = nn.Softplus()
-    
-    def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
-        """
-        Forward pass of Bayesian ICK:
-        Returns a tuple of two outputs for Gaussian mean and variance where mean is the inner product between 
-        latent representations and variance is directly modeled by the ImplicitNNKernel
-        """
-        assert len(x) == self.num_modalities, "The length of the input should be equal to num_modalities."
-        for i in range(len(x)):
-            if 'latent_features' not in locals():
-                latent_features = torch.unsqueeze(self.kernels[i](x[i]), dim=0)
-            else:
-                new_latent_feature = torch.unsqueeze(self.kernels[i](x[i]), dim=0)
-                latent_features = torch.cat((latent_features, new_latent_feature), dim=0)
-        mean = torch.sum(torch.prod(latent_features,dim=0),dim=1)
-        for i in range(len(self.kernels)):
-            if isinstance(self.kernels[i], ImplicitNNKernel):
-                var = torch.squeeze(self.softplus(self.fc(latent_features[i].float())))
-                break
-        return mean, var if 'var' in locals() else mean
 
 # ########################################################################################
 # MIT License

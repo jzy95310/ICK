@@ -9,9 +9,12 @@ import seaborn as sns
 import pandas as pd
 from scipy import stats
 from sklearn import metrics
+from torch import nn
 from typing import Callable, Dict, Tuple, List, Union
+from kernels.constants import *
 from .constants import *
 from .data_generator import create_ick_data_generator
+from kernels.nn import ImplicitConvNet2DKernel, ImplicitNNKernel
 
 def train_val_test_split(x: Union[List[np.ndarray], np.ndarray], y: np.ndarray, train_range: Tuple = (0.0,0.5), 
                          val_range: Tuple = (0.5,0.6), test_range: Tuple = (0.6,1.0), 
@@ -157,6 +160,27 @@ def plot_pred_vs_true_vals(pred_vals: np.ndarray, true_vals: np.ndarray, x_label
             os.makedirs(os.path.dirname(fig_save_path))
         plt.savefig(fig_save_path, dpi=300, bbox_inches='tight')
     plt.show()
+
+def attach_single_output_dense_layer(model: ImplicitNNKernel, activation: str = 'relu', dropout_ratio: float = 0.0) -> ImplicitNNKernel:
+    """
+    Attach a single output dense layer to the model
+    
+    Arguments
+    --------------
+    model: the ICK model to attach the dense layer
+    activation: str, the activation function for the previous dense layer
+    dropout_ratio: float, the dropout ratio for the previous dense layer
+    """
+    assert isinstance(model, ImplicitNNKernel), 'The model must be an instance of ImplicitNNKernel.'
+    if isinstance(model, ImplicitConvNet2DKernel):
+        model.conv_blocks.append(ACTIVATIONS[activation])
+        model.conv_blocks.append(nn.Dropout(dropout_ratio))
+        model.conv_blocks.append(nn.Linear(model.conv_blocks[-3].out_features, 1))
+    else:
+        model.dense_blocks.append(ACTIVATIONS[activation])
+        model.dense_blocks.append(nn.Dropout(dropout_ratio))
+        model.dense_blocks.append(nn.Linear(model.dense_blocks[-3].out_features, 1))
+    return model
 
 # ########################################################################################
 # MIT License
