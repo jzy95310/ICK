@@ -115,14 +115,14 @@ def main(args):
     spearmanr, pearsonr, rmse, mae = calculate_stats(
         y_test_pred, 
         y_test_true, 
-        data_save_path='./Results/CNNRF_seasonal_sorted_by_time.pkl'
+        data_save_path='./Results/CNNRF_seasonal_temporal.pkl'
     )
     plot_pred_vs_true_vals(
         y_test_pred, 
         y_test_true, 
         'Predicted PM$_{2.5}$ ($\mu $g m$^{-3}$)', 
         'True PM$_{2.5}$ ($\mu $g m$^{-3}$)',
-        fig_save_path='./Figures/CNNRF_seasonal_sorted_by_time.pdf', 
+        fig_save_path='./Figures/CNNRF_seasonal_temporal.pdf', 
         Spearman_R=spearmanr, 
         Pearson_R=pearsonr, 
         RMSE=rmse,

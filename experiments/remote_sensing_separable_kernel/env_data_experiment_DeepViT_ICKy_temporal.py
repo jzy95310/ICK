@@ -6,7 +6,7 @@ import pickle as pkl
 from model.ick import ICK
 from kernels.kernel_fn import periodic_kernel_nys
 from utils.helpers import create_generators_from_data
-from utils.train import EnsembleTrainer
+from utils.train import Trainer
 from utils.helpers import calculate_stats, plot_pred_vs_true_vals
 
 import torch
@@ -50,8 +50,8 @@ def preprocess_data():
     )
     return data_generators
 
-def train_ick_ensemble(data_generators, input_width, input_height, patch_size, latent_feature_dim, 
-                               num_blocks, lr, weight_decay, num_jobs, epochs, patience, verbose):
+def train_ick(data_generators, input_width, input_height, patch_size, latent_feature_dim, 
+              num_blocks, lr, weight_decay, epochs, patience, verbose):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     kernel_assignment = ['ImplicitDeepViTKernel', 'ImplicitNystromKernel']
     kernel_params = {
@@ -72,19 +72,18 @@ def train_ick_ensemble(data_generators, input_width, input_height, patch_size, l
             'nys_space': [[0.,365.]]
         }
     }
-    ensemble = [ICK(kernel_assignment, kernel_params) for _ in range(2)]
+    model = ICK(kernel_assignment, kernel_params)
     optim = 'sgd'
     optim_params = {
         'lr': lr,
         'momentum': 0.9, 
         'weight_decay': weight_decay
     }
-    trainer = EnsembleTrainer(
-        ensemble, 
+    trainer = Trainer(
+        model, 
         data_generators, 
         optim, 
         optim_params, 
-        num_jobs=num_jobs,
         device=device, 
         epochs=epochs, 
         patience=patience, 
@@ -95,7 +94,7 @@ def train_ick_ensemble(data_generators, input_width, input_height, patch_size, l
 
 def main(args):
     data_generators = preprocess_data()
-    y_test_pred_mean, y_test_pred_std, y_test_true = train_ick_ensemble(
+    y_test_pred, y_test_true = train_ick(
         data_generators, 
         args.input_width, 
         args.input_height, 
@@ -104,32 +103,29 @@ def main(args):
         args.num_blocks, 
         args.lr, 
         args.weight_decay, 
-        args.num_jobs, 
         args.epochs, 
         args.patience, 
         args.verbose
     )
-    spearmanr, pearsonr, rmse, mae, msll_score = calculate_stats(
-        y_test_pred_mean, 
+    spearmanr, pearsonr, rmse, mae = calculate_stats(
+        y_test_pred, 
         y_test_true, 
-        y_test_pred_std, 
-        data_save_path='./Results/DeepViT_ICKy_ensemble_sorted_by_time.pkl'
+        data_save_path='./Results/DeepViT_ICKy_temporal.pkl', 
     )
     plot_pred_vs_true_vals(
-        y_test_pred_mean, 
+        y_test_pred, 
         y_test_true, 
-        'Mean of predicted PM$_{2.5}$ ($\mu $g m$^{-3}$)', 
+        'Predicted PM$_{2.5}$ ($\mu $g m$^{-3}$)', 
         'True PM$_{2.5}$ ($\mu $g m$^{-3}$)',
-        fig_save_path='./Figures/DeepViT_ICKy_ensemble_sorted_by_time.pdf', 
+        fig_save_path='./Figures/DeepViT_ICKy_temporal.pdf', 
         Spearman_R=spearmanr, 
         Pearson_R=pearsonr, 
         RMSE=rmse,
-        MAE=mae,
-        MSLL=msll_score
+        MAE=mae
     )
 
 if __name__ == '__main__':
-    arg_parser = argparse.ArgumentParser(description='Train a DeepViT-ICK ensemble model on remote sensing data.')
+    arg_parser = argparse.ArgumentParser(description='Train a DeepViT-ICK model on remote sensing data.')
     arg_parser.add_argument('--input_width', type=int, default=224)
     arg_parser.add_argument('--input_height', type=int, default=224)
     arg_parser.add_argument('--patch_size', type=int, default=32)
@@ -137,7 +133,6 @@ if __name__ == '__main__':
     arg_parser.add_argument('--latent_feature_dim', type=int, default=16)
     arg_parser.add_argument('--lr', type=float, default=1e-6)
     arg_parser.add_argument('--weight_decay', type=float, default=0.1)
-    arg_parser.add_argument('--num_jobs', type=int, default=2)
     arg_parser.add_argument('--epochs', type=int, default=250)
     arg_parser.add_argument('--patience', type=int, default=20)
     arg_parser.add_argument('--verbose', type=int, default=1)

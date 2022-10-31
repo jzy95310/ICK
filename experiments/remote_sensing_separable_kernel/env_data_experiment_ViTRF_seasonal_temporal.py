@@ -4,7 +4,7 @@ import argparse
 import numpy as np
 import pickle as pkl
 from sklearn.ensemble import RandomTreesEmbedding, RandomForestRegressor
-from benchmarks.joint_nn import JointConvNet
+from benchmarks.joint_nn import JointViT
 from benchmarks.helpers import create_generators_from_data_for_joint_nn
 from benchmarks.train_benchmarks import JointNNTrainer
 from utils.helpers import calculate_stats, plot_pred_vs_true_vals
@@ -27,18 +27,19 @@ def preprocess_data():
     x_train, x_val, x_test, y_train, y_val, y_test = [], [], [], [], [], []
     with open(root_dir, "rb") as fp:
         for data_point in pkl.load(fp):
-            timestamps_raw.append(data_point['timestamp'])
+            sin_t, cos_t = np.sin(2*np.pi*data_point['timestamp']/365), np.cos(2*np.pi*data_point['timestamp']/365)
+            timestamps_raw.append([sin_t, cos_t])
             if data_point['timestamp'] < 365:
                 x_train.append(data_point['Image'])
-                timestamps_raw_train.append(data_point['timestamp'])
+                timestamps_raw_train.append([sin_t, cos_t])
                 y_train.append(data_point['PM25'])
             elif data_point['timestamp'] < 500:
                 x_val.append(data_point['Image'])
-                timestamps_raw_val.append(data_point['timestamp'])
+                timestamps_raw_val.append([sin_t, cos_t])
                 y_val.append(data_point['PM25'])
             else:
                 x_test.append(data_point['Image'])
-                timestamps_raw_test.append(data_point['timestamp'])
+                timestamps_raw_test.append([sin_t, cos_t])
                 y_test.append(data_point['PM25'])
     timestamps_raw = np.array(timestamps_raw)
     x_train, timestamps_raw_train, y_train = np.array(x_train), np.array(timestamps_raw_train), np.array(y_train)
@@ -46,10 +47,10 @@ def preprocess_data():
     x_test, timestamps_raw_test, y_test = np.array(x_test), np.array(timestamps_raw_test), np.array(y_test)
 
     # Transform timestamps data with Random Trees Embedding Model
-    rt_model = RandomTreesEmbedding(n_estimators=300,max_depth=2).fit(timestamps_raw.reshape(-1,1))
-    aug_feature_train = rt_model.transform(timestamps_raw_train.reshape(-1,1)).toarray()
-    aug_feature_val = rt_model.transform(timestamps_raw_val.reshape(-1,1)).toarray()
-    aug_feature_test = rt_model.transform(timestamps_raw_test.reshape(-1,1)).toarray()
+    rt_model = RandomTreesEmbedding(n_estimators=300,max_depth=2).fit(timestamps_raw)
+    aug_feature_train = rt_model.transform(timestamps_raw_train).toarray()
+    aug_feature_val = rt_model.transform(timestamps_raw_val).toarray()
+    aug_feature_test = rt_model.transform(timestamps_raw_test).toarray()
 
     # Train and predict with Random Forest Regressor
     rf_model = RandomForestRegressor(n_estimators=300,max_depth=2).fit(aug_feature_train, y_train)
@@ -67,13 +68,13 @@ def preprocess_data():
     )
     return data_generators, aug_feature_train.shape[1]
 
-def train_joint_model(data_generators, input_width, input_height, in_channels, num_blocks, aug_feature_dim, 
-                               lr, weight_decay, epochs, patience, verbose):
+def train_joint_model(data_generators, input_width, input_height, patch_size, num_blocks, aug_feature_dim, 
+                      lr, weight_decay, epochs, patience, verbose):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = JointConvNet(
+    model = JointViT(
         input_width, 
         input_height,
-        in_channels, 
+        patch_size, 
         num_blocks, 
         aug_feature_dim
     )
@@ -102,7 +103,7 @@ def main(args):
         data_generators, 
         args.input_width, 
         args.input_height, 
-        args.in_channels, 
+        args.patch_size, 
         args.num_blocks, 
         aug_feature_dim, 
         args.lr, 
@@ -114,14 +115,14 @@ def main(args):
     spearmanr, pearsonr, rmse, mae = calculate_stats(
         y_test_pred, 
         y_test_true, 
-        data_save_path='./Results/CNNRF_sorted_by_time.pkl'
+        data_save_path='./Results/ViTRF_seasonal_temporal.pkl', 
     )
     plot_pred_vs_true_vals(
         y_test_pred, 
         y_test_true, 
         'Predicted PM$_{2.5}$ ($\mu $g m$^{-3}$)', 
         'True PM$_{2.5}$ ($\mu $g m$^{-3}$)',
-        fig_save_path='./Figures/CNNRF_sorted_by_time.pdf', 
+        fig_save_path='./Figures/ViTRF_seasonal_temporal.pdf', 
         Spearman_R=spearmanr, 
         Pearson_R=pearsonr, 
         RMSE=rmse,
@@ -129,10 +130,10 @@ def main(args):
     )
 
 if __name__ == '__main__':
-    arg_parser = argparse.ArgumentParser(description='Train a joint CNN-RF model on remote sensing data.')
+    arg_parser = argparse.ArgumentParser(description='Train a joint ViT-RF model on remote sensing data.')
     arg_parser.add_argument('--input_width', type=int, default=224)
     arg_parser.add_argument('--input_height', type=int, default=224)
-    arg_parser.add_argument('--in_channels', type=int, default=3)
+    arg_parser.add_argument('--patch_size', type=int, default=32)
     arg_parser.add_argument('--num_blocks', type=int, default=2)
     arg_parser.add_argument('--lr', type=float, default=5e-6)
     arg_parser.add_argument('--weight_decay', type=float, default=0.1)

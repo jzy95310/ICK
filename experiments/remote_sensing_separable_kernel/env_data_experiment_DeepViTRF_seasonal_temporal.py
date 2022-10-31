@@ -4,7 +4,7 @@ import argparse
 import numpy as np
 import pickle as pkl
 from sklearn.ensemble import RandomTreesEmbedding, RandomForestRegressor
-from benchmarks.joint_nn import JointViT
+from benchmarks.joint_nn import JointDeepViT
 from benchmarks.helpers import create_generators_from_data_for_joint_nn
 from benchmarks.train_benchmarks import JointNNTrainer
 from utils.helpers import calculate_stats, plot_pred_vs_true_vals
@@ -71,7 +71,7 @@ def preprocess_data():
 def train_joint_model(data_generators, input_width, input_height, patch_size, num_blocks, aug_feature_dim, 
                       lr, weight_decay, epochs, patience, verbose):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = JointViT(
+    model = JointDeepViT(
         input_width, 
         input_height,
         patch_size, 
@@ -115,14 +115,14 @@ def main(args):
     spearmanr, pearsonr, rmse, mae = calculate_stats(
         y_test_pred, 
         y_test_true, 
-        data_save_path='./Results/ViTRF_seasonal_sorted_by_time.pkl', 
+        data_save_path='./Results/DeepViTRF_seasonal_temporal.pkl', 
     )
     plot_pred_vs_true_vals(
         y_test_pred, 
         y_test_true, 
         'Predicted PM$_{2.5}$ ($\mu $g m$^{-3}$)', 
         'True PM$_{2.5}$ ($\mu $g m$^{-3}$)',
-        fig_save_path='./Figures/ViTRF_seasonal_sorted_by_time.pdf', 
+        fig_save_path='./Figures/DeepViTRF_seasonal_temporal.pdf', 
         Spearman_R=spearmanr, 
         Pearson_R=pearsonr, 
         RMSE=rmse,
@@ -130,7 +130,7 @@ def main(args):
     )
 
 if __name__ == '__main__':
-    arg_parser = argparse.ArgumentParser(description='Train a joint ViT-RF model on remote sensing data.')
+    arg_parser = argparse.ArgumentParser(description='Train a joint DeepViT-RF model on remote sensing data.')
     arg_parser.add_argument('--input_width', type=int, default=224)
     arg_parser.add_argument('--input_height', type=int, default=224)
     arg_parser.add_argument('--patch_size', type=int, default=32)

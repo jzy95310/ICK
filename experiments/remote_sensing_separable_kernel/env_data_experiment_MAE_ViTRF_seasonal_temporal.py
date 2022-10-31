@@ -4,14 +4,15 @@ import argparse
 import numpy as np
 import pickle as pkl
 from sklearn.ensemble import RandomTreesEmbedding, RandomForestRegressor
-from benchmarks.joint_nn import JointDeepViT
-from benchmarks.helpers import create_generators_from_data_for_joint_nn
-from benchmarks.train_benchmarks import JointNNEnsembleTrainer
+from benchmarks.joint_nn import JointViT
+from benchmarks.helpers import create_generators_from_data_for_joint_nn, pretrain_encoder_with_mae
+from benchmarks.train_benchmarks import JointNNTrainer
 from utils.helpers import calculate_stats, plot_pred_vs_true_vals
 
 import torch
 from torch import optim
 from torchvision import transforms
+from torch.utils.data import DataLoader, ConcatDataset
 
 # To make outputs stable across runs
 np.random.seed(2020)
@@ -68,28 +69,43 @@ def preprocess_data():
     )
     return data_generators, aug_feature_train.shape[1]
 
-def train_joint_model_ensemble(data_generators, input_width, input_height, patch_size, num_blocks, aug_feature_dim, 
-                               lr, weight_decay, num_jobs, epochs, patience, verbose):
+def train_joint_model(data_generators, input_width, input_height, patch_size, num_blocks, aug_feature_dim, 
+                      lr, weight_decay, epochs, patience, verbose):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    ensemble = [JointDeepViT(
+    model = JointViT(
         input_width, 
         input_height,
         patch_size, 
         num_blocks, 
         aug_feature_dim
-    ) for _ in range(20)]
+    )
+    # Pretrain the ViT encoder with MAE
+    dataset = ConcatDataset([
+        data_generators['train'].dataset, 
+        data_generators['val'].dataset, 
+        data_generators['test'].dataset
+    ])
+    dataloader = DataLoader(dataset, batch_size=128, shuffle=False)
+    encoder_name = 'vit.pt'
+    pretrain_encoder_with_mae(
+        model.vit, 
+        dataloader, 
+        model_name=encoder_name, 
+        device=device
+    )
+    model.load_pretrained_encoder_weights('./pretrained_encoder_checkpoints/pretrained_{}'.format(encoder_name))
+    # Train the ensemble
     optim = 'adam'
     optim_params = {
         'lr': lr,
         # 'momentum': 0.9, 
         'weight_decay': weight_decay
     }
-    trainer = JointNNEnsembleTrainer(
-        ensemble, 
+    trainer = JointNNTrainer(
+        model, 
         data_generators, 
         optim, 
         optim_params, 
-        num_jobs=num_jobs,
         device=device, 
         epochs=epochs, 
         patience=patience, 
@@ -100,7 +116,7 @@ def train_joint_model_ensemble(data_generators, input_width, input_height, patch
 
 def main(args):
     data_generators, aug_feature_dim = preprocess_data()
-    y_test_pred_mean, y_test_pred_std, y_test_true = train_joint_model_ensemble(
+    y_test_pred, y_test_true = train_joint_model(
         data_generators, 
         args.input_width, 
         args.input_height, 
@@ -109,41 +125,37 @@ def main(args):
         aug_feature_dim, 
         args.lr, 
         args.weight_decay, 
-        args.num_jobs, 
         args.epochs, 
         args.patience, 
         args.verbose
     )
-    spearmanr, pearsonr, rmse, mae, msll_score = calculate_stats(
-        y_test_pred_mean, 
+    spearmanr, pearsonr, rmse, mae = calculate_stats(
+        y_test_pred, 
         y_test_true, 
-        y_test_pred_std, 
-        data_save_path='./Results/DeepViTRF_seasonal_ensemble_sorted_by_time.pkl', 
+        data_save_path='./Results/MAE_ViTRF_seasonal_temporal.pkl', 
     )
     plot_pred_vs_true_vals(
-        y_test_pred_mean, 
+        y_test_pred, 
         y_test_true, 
-        'Mean of predicted PM$_{2.5}$ ($\mu $g m$^{-3}$)', 
+        'Predicted PM$_{2.5}$ ($\mu $g m$^{-3}$)', 
         'True PM$_{2.5}$ ($\mu $g m$^{-3}$)',
-        fig_save_path='./Figures/DeepViTRF_seasonal_ensemble_sorted_by_time.pdf', 
+        fig_save_path='./Figures/MAE_ViTRF_seasonal_temporal.pdf', 
         Spearman_R=spearmanr, 
         Pearson_R=pearsonr, 
         RMSE=rmse,
-        MAE=mae,
-        MSLL=msll_score
+        MAE=mae
     )
 
 if __name__ == '__main__':
-    arg_parser = argparse.ArgumentParser(description='Train a joint Deep ViT-RF ensemble model on remote sensing data.')
+    arg_parser = argparse.ArgumentParser(description='Train a joint ViT-RF model pretrained with MAE on remote sensing data.')
     arg_parser.add_argument('--input_width', type=int, default=224)
     arg_parser.add_argument('--input_height', type=int, default=224)
     arg_parser.add_argument('--patch_size', type=int, default=32)
     arg_parser.add_argument('--num_blocks', type=int, default=2)
     arg_parser.add_argument('--lr', type=float, default=5e-6)
     arg_parser.add_argument('--weight_decay', type=float, default=0.1)
-    arg_parser.add_argument('--num_jobs', type=int, default=2)
-    arg_parser.add_argument('--epochs', type=int, default=250)
-    arg_parser.add_argument('--patience', type=int, default=20)
+    arg_parser.add_argument('--epochs', type=int, default=100)
+    arg_parser.add_argument('--patience', type=int, default=10)
     arg_parser.add_argument('--verbose', type=int, default=1)
     args = arg_parser.parse_known_args()[0]
     main(args)

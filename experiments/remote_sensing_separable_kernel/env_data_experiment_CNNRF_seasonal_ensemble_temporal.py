@@ -117,14 +117,14 @@ def main(args):
         y_test_pred_mean, 
         y_test_true, 
         y_test_pred_std, 
-        data_save_path='./Results/CNNRF_seasonal_ensemble_sorted_by_time.pkl'
+        data_save_path='./Results/CNNRF_seasonal_ensemble_temporal.pkl'
     )
     plot_pred_vs_true_vals(
         y_test_pred_mean, 
         y_test_true, 
         'Mean of predicted PM$_{2.5}$ ($\mu $g m$^{-3}$)', 
         'True PM$_{2.5}$ ($\mu $g m$^{-3}$)',
-        fig_save_path='./Figures/CNNRF_seasonal_ensemble_sorted_by_time.pdf', 
+        fig_save_path='./Figures/CNNRF_seasonal_ensemble_temporal.pdf', 
         Spearman_R=spearmanr, 
         Pearson_R=pearsonr, 
         RMSE=rmse,

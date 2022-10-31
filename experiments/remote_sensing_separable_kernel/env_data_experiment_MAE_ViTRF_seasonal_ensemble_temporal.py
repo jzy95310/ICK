@@ -5,13 +5,14 @@ import numpy as np
 import pickle as pkl
 from sklearn.ensemble import RandomTreesEmbedding, RandomForestRegressor
 from benchmarks.joint_nn import JointViT
-from benchmarks.helpers import create_generators_from_data_for_joint_nn
+from benchmarks.helpers import create_generators_from_data_for_joint_nn, pretrain_encoder_with_mae
 from benchmarks.train_benchmarks import JointNNEnsembleTrainer
 from utils.helpers import calculate_stats, plot_pred_vs_true_vals
 
 import torch
 from torch import optim
 from torchvision import transforms
+from torch.utils.data import DataLoader, ConcatDataset
 
 # To make outputs stable across runs
 np.random.seed(2020)
@@ -78,6 +79,23 @@ def train_joint_model_ensemble(data_generators, input_width, input_height, patch
         num_blocks, 
         aug_feature_dim
     ) for _ in range(20)]
+    # Pretrain the ViT encoder with MAE
+    dataset = ConcatDataset([
+        data_generators['train'].dataset, 
+        data_generators['val'].dataset, 
+        data_generators['test'].dataset
+    ])
+    dataloader = DataLoader(dataset, batch_size=128, shuffle=False)
+    encoder_name = 'vit_baselearner.pt'
+    pretrain_encoder_with_mae(
+        ensemble[0].vit, 
+        dataloader, 
+        model_name=encoder_name, 
+        device=device
+    )
+    for baselearner in ensemble:
+        baselearner.load_pretrained_encoder_weights('./pretrained_encoder_checkpoints/pretrained_{}'.format(encoder_name))
+    # Train the ensemble
     optim = 'adam'
     optim_params = {
         'lr': lr,
@@ -118,14 +136,14 @@ def main(args):
         y_test_pred_mean, 
         y_test_true, 
         y_test_pred_std, 
-        data_save_path='./Results/ViTRF_seasonal_ensemble_sorted_by_time.pkl', 
+        data_save_path='./Results/MAE_ViTRF_seasonal_ensemble_temporal.pkl', 
     )
     plot_pred_vs_true_vals(
         y_test_pred_mean, 
         y_test_true, 
         'Mean of predicted PM$_{2.5}$ ($\mu $g m$^{-3}$)', 
         'True PM$_{2.5}$ ($\mu $g m$^{-3}$)',
-        fig_save_path='./Figures/ViTRF_seasonal_ensemble_sorted_by_time.pdf', 
+        fig_save_path='./Figures/MAE_ViTRF_seasonal_ensemble_temporal.pdf', 
         Spearman_R=spearmanr, 
         Pearson_R=pearsonr, 
         RMSE=rmse,
@@ -134,7 +152,7 @@ def main(args):
     )
 
 if __name__ == '__main__':
-    arg_parser = argparse.ArgumentParser(description='Train a joint ViT-RF ensemble model on remote sensing data.')
+    arg_parser = argparse.ArgumentParser(description='Train a joint ViT-RF ensemble model pretrained with MAE on remote sensing data.')
     arg_parser.add_argument('--input_width', type=int, default=224)
     arg_parser.add_argument('--input_height', type=int, default=224)
     arg_parser.add_argument('--patch_size', type=int, default=32)

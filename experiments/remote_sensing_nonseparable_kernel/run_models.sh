@@ -3,7 +3,7 @@
 #SBATCH --job-name=icky_exp
 #SBATCH --output=icky_exp_%a.out
 #SBATCH --error=icky_exp_%a.err
-#SBATCH -a 1-3
+#SBATCH -a 4-6
 #SBATCH -c 2
 #SBATCH --nice
 

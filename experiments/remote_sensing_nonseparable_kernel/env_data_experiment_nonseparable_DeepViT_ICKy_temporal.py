@@ -3,7 +3,7 @@ sys.path.insert(0, '../../')
 import argparse
 import numpy as np
 import pickle as pkl
-from model.ick import ICK
+from model.ick import AdditiveICK, ICK
 from kernels.kernel_fn import periodic_kernel_nys
 from utils.helpers import create_generators_from_data
 from utils.train import Trainer
@@ -50,29 +50,62 @@ def preprocess_data():
     )
     return data_generators
 
-def train_ick(data_generators, input_width, input_height, in_channels, latent_feature_dim, 
+def train_ick(data_generators, input_width, input_height, patch_size, latent_feature_dim, 
               num_blocks, lr, weight_decay, epochs, patience, verbose):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    kernel_assignment = ['ImplicitConvNet2DKernel', 'ImplicitNystromKernel']
-    kernel_params = {
-        'ImplicitConvNet2DKernel':{
-            'input_width': input_width,
-            'input_height': input_height, 
-            'in_channels': in_channels, 
-            'latent_feature_dim': latent_feature_dim,
-            'num_blocks': num_blocks
-        }, 
-        'ImplicitNystromKernel': {
-            'kernel_func': periodic_kernel_nys, 
-            'params': ['std','period','lengthscale','noise'], 
-            'vals': [1.,365.,0.25,0.5], 
-            'trainable': [True,False,True,True], 
-            'alpha': 1e-5, 
-            'num_inducing_points': latent_feature_dim, 
-            'nys_space': [[0.,365.]]
+    K_deepvit = ICK(
+        kernel_assignment = ['ImplicitDeepViTKernel'], 
+        kernel_params = {
+            'ImplicitDeepViTKernel': {
+                'input_width': input_width,
+                'input_height': input_height, 
+                'patch_size': patch_size, 
+                'latent_feature_dim': latent_feature_dim,
+                'num_blocks': num_blocks
+            }
         }
-    }
-    model = ICK(kernel_assignment, kernel_params)
+    )
+    K_per = ICK(
+        kernel_assignment = ['ImplicitNystromKernel'], 
+        kernel_params = {
+            'ImplicitNystromKernel': {
+                'kernel_func': periodic_kernel_nys, 
+                'params': ['std','period','lengthscale','noise'], 
+                'vals': [2.,365.,0.5,0.5], 
+                'trainable': [True,True,True,True], 
+                'alpha': 1e-5, 
+                'num_inducing_points': latent_feature_dim, 
+                'nys_space': [[0.,365.]]
+            }
+        }
+    )
+    K_mul = ICK(
+        kernel_assignment = ['ImplicitDeepViTKernel', 'ImplicitNystromKernel'], 
+        kernel_params = {
+            'ImplicitDeepViTKernel': {
+                'input_width': input_width,
+                'input_height': input_height, 
+                'patch_size': patch_size, 
+                'latent_feature_dim': latent_feature_dim,
+                'num_blocks': num_blocks
+            }, 
+            'ImplicitNystromKernel': {
+                'kernel_func': periodic_kernel_nys, 
+                'params': ['std','period','lengthscale','noise'], 
+                'vals': [2.,365.,0.5,0.5], 
+                'trainable': [True,True,True,True], 
+                'alpha': 1e-5, 
+                'num_inducing_points': latent_feature_dim, 
+                'nys_space': [[0.,365.]]
+            }
+        }
+    )
+    model = AdditiveICK(
+        components=[K_deepvit,K_per,K_mul], 
+        component_assignment=[[0],[1],[0,1]], 
+        coeffs=[1.,1.,1.], 
+        weighted=[False,True,False]
+    )
     optim = 'sgd'
     optim_params = {
         'lr': lr,
@@ -98,7 +131,7 @@ def main(args):
         data_generators, 
         args.input_width, 
         args.input_height, 
-        args.in_channels, 
+        args.patch_size, 
         args.latent_feature_dim, 
         args.num_blocks, 
         args.lr, 
@@ -110,14 +143,14 @@ def main(args):
     spearmanr, pearsonr, rmse, mae = calculate_stats(
         y_test_pred, 
         y_test_true, 
-        data_save_path='./Results/CNN_ICKy_sorted_by_time.pkl'
+        data_save_path='./Results/Nonseparable_DeepViT_ICKy_temporal.pkl', 
     )
     plot_pred_vs_true_vals(
         y_test_pred, 
         y_test_true, 
         'Predicted PM$_{2.5}$ ($\mu $g m$^{-3}$)', 
         'True PM$_{2.5}$ ($\mu $g m$^{-3}$)',
-        fig_save_path='./Figures/CNN_ICKy_sorted_by_time.pdf', 
+        fig_save_path='./Figures/Nonseparable_DeepViT_ICKy_temporal.pdf', 
         Spearman_R=spearmanr, 
         Pearson_R=pearsonr, 
         RMSE=rmse,
@@ -125,10 +158,10 @@ def main(args):
     )
 
 if __name__ == '__main__':
-    arg_parser = argparse.ArgumentParser(description='Train a CNN-ICK model on remote sensing data.')
+    arg_parser = argparse.ArgumentParser(description='Train a nonseparable DeepViT-ICK model on remote sensing data.')
     arg_parser.add_argument('--input_width', type=int, default=224)
     arg_parser.add_argument('--input_height', type=int, default=224)
-    arg_parser.add_argument('--in_channels', type=int, default=3)
+    arg_parser.add_argument('--patch_size', type=int, default=32)
     arg_parser.add_argument('--num_blocks', type=int, default=2)
     arg_parser.add_argument('--latent_feature_dim', type=int, default=16)
     arg_parser.add_argument('--lr', type=float, default=1e-6)
