@@ -380,6 +380,7 @@ class VariationalBayesTrainer(BaseTrainer):
 class EnsembleTrainer(BaseTrainer):
     """
     Class for training an ensemble of ICK models
+    Note that each predictor in the ensemble is trained independently
 
     Arguments
     --------------
@@ -536,94 +537,10 @@ class EnsembleTrainer(BaseTrainer):
         y_test_pred_std = torch.std(torch.stack(y_test_pred, dim=0), dim=0)
         return y_test_pred_mean.detach().cpu().numpy(), y_test_pred_std.detach().cpu().numpy(), y_test_true.detach().cpu().numpy()
 
-class CMGPTrainer(Trainer):
-    """
-    Trainer class for ICK-CMGP model
-
-    Arguments
-    --------------
-    treatment_index: int, the index of the group variable (control or treatment) in the input data
-    """
-    def __init__(self, model: torch.nn.Module, data_generators: Dict, optim: str, optim_params: Dict, lr_scheduler: torch.optim.lr_scheduler._LRScheduler = None, 
-                 model_save_dir: str = None, model_name: str = 'model.pt', loss_fn: torch.nn.modules.loss._Loss = FactualMSELoss(), 
-                 device: torch.device = torch.device('cpu'), epochs: int = 100, patience: int = 10, verbose: int = 0, 
-                 treatment_index: int = 0, logger: logging.Logger = logging.getLogger("Trainer")) -> None:
-        self.treatment_index = treatment_index
-        super(CMGPTrainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, model_save_dir, model_name, 
-                                          loss_fn, device, epochs, patience, verbose, logger)
-        self._validate_inputs()
-    
-    def _validate_inputs(self) -> None:
-        assert self.treatment_index >= 0, "Treatment index must be a non-negative integer."
-        super(CMGPTrainer, self)._validate_inputs()
-    
-    def _train_step(self) -> None:
-        """
-        Perform a single training step for the ICK-CMGP model
-        """
-        y_train_pred = torch.empty(0).to(self.device)
-        y_train_true = torch.empty(0).to(self.device)
-        groups = torch.empty(0).to(self.device)
-        self.model.to(self.device)
-        self.model.train()
-        for step, batch in enumerate(self.data_generators[TRAIN]):
-            data, target = self._assign_device_to_data(batch[0], batch[1])
-            data, group = data[:self.treatment_index] + data[self.treatment_index+1:], torch.squeeze(data[self.treatment_index])
-            # Zero the gradients
-            self.optimizer.zero_grad()
-            # Forward and backward pass
-            output = self.model(data).float()   # (batch_size, 2)
-            loss = self.loss_fn(output, target, group)
-            loss.backward()
-            self.optimizer.step()
-            # Record the predictions
-            y_train_pred = torch.cat((y_train_pred, output), dim=0)
-            y_train_true = torch.cat((y_train_true, target), dim=0)
-            groups = torch.cat((groups, group), dim=0)
-        train_loss = self.loss_fn(y_train_pred, y_train_true, group).item()
-        return train_loss, step
-    
-    def validate(self) -> float:
-        """
-        Evaluate the ICK-CMGP model on the validation data
-        """
-        y_val_pred = torch.empty(0).to(self.device)
-        y_val_true = torch.empty(0).to(self.device)
-        groups = torch.empty(0).to(self.device)
-        self.model.eval()
-
-        key = VAL if self.data_generators[VAL] is not None else TEST
-        with torch.no_grad():
-            for batch in self.data_generators[key]:
-                data, target = self._assign_device_to_data(batch[0], batch[1])
-                data, group = data[:self.treatment_index] + data[self.treatment_index+1:], torch.squeeze(data[self.treatment_index])
-                output = self.model(data).float()
-                y_val_pred = torch.cat((y_val_pred, output), dim=0)
-                y_val_true = torch.cat((y_val_true, target), dim=0)
-                groups = torch.cat((groups, group), dim=0)
-        val_loss = self.loss_fn(y_val_pred, y_val_true, groups).item()
-        return val_loss
-    
-    def predict(self) -> float:
-        """
-        Evaluate the ICK-CMGP model on the test data
-        """
-        y_test_pred = torch.empty(0).to(self.device)
-        y_test_true = torch.empty(0).to(self.device)
-        self.model.eval()
-
-        with torch.no_grad():
-            for batch in self.data_generators[TEST]:
-                data, target = self._assign_device_to_data(batch[0], batch[1])
-                data = data[:self.treatment_index] + data[self.treatment_index+1:]
-                output = self.model(data).float()
-                y_test_pred = torch.cat((y_test_pred, output), dim=0)
-                y_test_true = torch.cat((y_test_true, target), dim=0)
-        return y_test_pred.detach().cpu().numpy(), y_test_true.detach().cpu().numpy()
-
 class CMGPEnsembleTrainer(EnsembleTrainer):
     """
     Trainer class for ICK-CMGP ensemble
+    Note that unlike EnsembleTrainer, all predictors in the ensemble are trained jointly instead of independently
 
     Arguments
     --------------
@@ -640,37 +557,104 @@ class CMGPEnsembleTrainer(EnsembleTrainer):
     
     def _validate_inputs(self) -> None:
         assert self.treatment_index >= 0, "Treatment index must be a non-negative integer."
+        assert isinstance(self.loss_fn, (FactualMSELoss, FactualCrossEntropyLoss)), "Loss function must be either FactualMSELoss or FactualCrossEntropyLoss."
         super(CMGPEnsembleTrainer, self)._validate_inputs()
+
+    def _set_optimizer(self) -> None:
+        """
+        Only one optimizer is needed for the ensemble
+        """
+        self.optimizer = OPTIMIZERS[self.optim]([{'params': m.parameters(), **self.optim_params} for m in self.model])
     
-    def _train_step(self, baselearner_index: int) -> float:
+    def _train_step(self) -> float:
         """
         Perform a single training step for a baselearner in the ICK-CMGP ensemble
-
-        Arguments
-        --------------
-        base_learner_idx: int, the index of the baselearner in the ensemble
         """
-        y_train_pred = torch.empty(0).to(self.device)
+        y_train_pred = [torch.empty(0).to(self.device) for _ in range(len(self.model))]
         y_train_true = torch.empty(0).to(self.device)
         groups = torch.empty(0).to(self.device)
-        self.model[baselearner_index].to(self.device)
-        self.model[baselearner_index].train()
         for _, batch in enumerate(self.data_generators[TRAIN]):
             data, target = self._assign_device_to_data(batch[0], batch[1])
             data, group = data[:self.treatment_index] + data[self.treatment_index+1:], torch.squeeze(data[self.treatment_index])
+            predictions = torch.empty(0, data[0].shape[0], 2).to(self.device)
             # Zero the gradients
-            self.optimizers[baselearner_index].zero_grad()
-            # Forward and backward pass
-            output = self.model[baselearner_index](data).float()
-            loss = self.loss_fn(output, target, group)
+            self.optimizer.zero_grad()
+            for i in range(len(self.model)):
+                self.model[i].to(self.device)
+                self.model[i].train()
+                # Forward pass
+                output = self.model[i](data).float()
+                predictions = torch.cat((predictions, torch.unsqueeze(output,dim=0)), dim=0)
+                # Record the predictions
+                y_train_pred[i] = torch.cat((y_train_pred[i], output), dim=0)
+            # Backward pass
+            loss = self.loss_fn(predictions, target, group)
             loss.backward()
-            self.optimizers[baselearner_index].step()
-            # Record the predictions
-            y_train_pred = torch.cat((y_train_pred, output), dim=0)
+            self.optimizer.step()
+            # Record true values and groups
             y_train_true = torch.cat((y_train_true, target), dim=0)
             groups = torch.cat((groups, group), dim=0)
-        train_loss = self.loss_fn(y_train_pred, y_train_true, groups).item()
+        train_loss = self.loss_fn(torch.stack(y_train_pred), y_train_true, groups).item()
         return train_loss
+    
+    def train(self) -> None:
+        """
+        Train the ICK-CMGP ensemble
+        """
+        # initialize the early stopping counter
+        best_loss = 1e9
+        best_model_state_dict = None
+        trigger_times = 0
+
+        self.logger.info("Training started:\n")
+        for epoch in range(self.epochs):
+            # Training
+            self.loss_fn.regularize_var = True  # Empirical risk-based Bayes
+            self.logger.info(f"Epoch {epoch+1}/{self.epochs}")
+            self.logger.info(f"Learning rate: {self.optimizer.param_groups[0]['lr']:7.6f}")
+            train_start = time.time()
+            train_loss = self._train_step()
+            # Log the training time and loss
+            train_time = time.time() - train_start
+            self.logger.info("Training time - {:.0f}s - loss {:.4f}".format(train_time, train_loss))
+            if self.lr_scheduler is not None:
+                self.lr_scheduler.step()
+            # Validation
+            self.loss_fn.regularize_var = False
+            val_start = time.time()
+            self.logger.info("Validation:")
+            val_loss = self.validate()
+            val_time = time.time() - val_start
+            self.logger.info("{:.0f}s - loss {:.4f}\n".format(val_time, val_loss))
+            if self.lr_scheduler is not None:
+                self.lr_scheduler.step()
+            # Early stopping
+            if val_loss > best_loss:
+                trigger_times += 1
+                if trigger_times >= self.patience:
+                    # Trigger early stopping and save the best ensemble
+                    self.logger.info("Early stopping - patience reached")
+                    if best_model_state_dict is not None:
+                        self.logger.info("Restoring the best model")
+                        for i in range(len(self.model)):
+                            self.model[i].load_state_dict(best_model_state_dict['model_'+str(i)])
+                    if self.model_save_dir is not None:
+                        self.logger.info("Saving the best ensemble")
+                        torch.save(best_model_state_dict, os.path.join(self.model_save_dir, self.model_name))
+                    break
+            else:
+                trigger_times = 0
+                best_loss = val_loss
+                best_model_state_dict = {'model_'+str(i): self.model[i].state_dict() for i in range(len(self.model))}
+            # Visualize the test predictions if verbose > 0
+            if self.verbose > 0:
+                with torch.no_grad():
+                    y_test_pred_mean, y_test_pred_std, y_test_true = self.predict()
+                stats_for_test_pred = self._log_prediction_stats(y_test_pred_mean, y_test_true, y_test_pred_std)
+                if self.verbose > 1:
+                    self._plot_predictions(y_test_pred_mean, y_test_true, stats_for_test_pred)
+        if trigger_times < self.patience:
+            self.logger.info("Training completed.")
     
     def validate(self) -> torch.Tensor:
         """
@@ -692,13 +676,17 @@ class CMGPEnsembleTrainer(EnsembleTrainer):
                     if i == 0:
                         y_val_true = torch.cat((y_val_true, target), dim=0)
                         groups = torch.cat((groups, group), dim=0)
-        y_val_pred_mean = torch.mean(torch.stack(y_val_pred, dim=0), dim=0)
-        val_loss = self.loss_fn(y_val_pred_mean, y_val_true, groups).item()
+        y_val_pred = torch.stack(y_val_pred, dim=0)
+        val_loss = self.loss_fn(y_val_pred, y_val_true, groups).item()
         return val_loss
     
-    def predict(self) -> Tuple:
+    def predict(self, output_binary: bool = False) -> Tuple:
         """
         Evaluate the ICK-CMGP ensemble on the test data
+
+        Arguments
+        --------------
+        output_binary: bool, whether to output binary predictions
         """
         y_test_pred = [torch.empty(0).to(self.device) for _ in range(len(self.model))]
         y_test_true = torch.empty(0).to(self.device)
@@ -715,7 +703,10 @@ class CMGPEnsembleTrainer(EnsembleTrainer):
                         y_test_true = torch.cat((y_test_true, target), dim=0)
         y_test_pred_mean = torch.mean(torch.stack(y_test_pred, dim=0), dim=0)
         y_test_pred_std = torch.std(torch.stack(y_test_pred, dim=0), dim=0)
-        return y_test_pred_mean.detach().cpu().numpy(), y_test_pred_std.detach().cpu().numpy(), y_test_true.detach().cpu().numpy()
+        if output_binary:
+            return (y_test_pred_mean > 0.5).float().detach().cpu().numpy(), y_test_pred_std.detach().cpu().numpy(), y_test_true.detach().cpu().numpy()
+        else:
+            return y_test_pred_mean.detach().cpu().numpy(), y_test_pred_std.detach().cpu().numpy(), y_test_true.detach().cpu().numpy()
 
 # ########################################################################################
 # MIT License

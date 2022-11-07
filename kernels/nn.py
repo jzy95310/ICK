@@ -170,19 +170,22 @@ class ImplicitDenseNetKernel(ImplicitNNKernel):
         """
         self.freeze_blocks(len(self.dense_blocks) - 1)
     
-    def reset_parameters_normal(self, w_mean: float = 0.0, w_std: float = 1.0, b_mean: float = 0.0, b_std: float = 1.0) -> None:
+    def reset_parameters_normal(self, w_mean: float = 0.0, w_std: float = 1.0, b_mean: float = 0.0, b_std: float = 1.0, 
+                                ntk_param: bool = True) -> None:
         """
         Reset the parameters of the DenseNet with a normal distribution based on NTK parameterization
         """
         for dense_block in self.dense_blocks:
             if isinstance(dense_block, nn.Linear):
-                nn.init.normal_(dense_block.weight, mean=w_mean, std=w_std/np.sqrt(dense_block.out_features))
+                nn.init.normal_(dense_block.weight, mean=w_mean, std=(w_std/np.sqrt(dense_block.out_features) if ntk_param else w_std))
                 nn.init.normal_(dense_block.bias, mean=b_mean, std=b_std)
-            else:
+            elif isinstance(dense_block, nn.Sequential):
                 for layer in dense_block:
                     if isinstance(layer, nn.Linear):
-                        nn.init.normal_(layer.weight, mean=w_mean, std=w_std/np.sqrt(layer.out_features))
+                        nn.init.normal_(layer.weight, mean=w_mean, std=(w_std/np.sqrt(layer.out_features) if ntk_param else w_std))
                         nn.init.normal_(layer.bias, mean=b_mean, std=b_std)
+            else:
+                continue
 
 class ImplicitConvNet2DKernel(ImplicitNNKernel):
     """

@@ -5,7 +5,7 @@
 # SEE LICENSE STATEMENT AT THE END OF THE FILE
 
 from .ick import ICK
-from typing import List, Tuple
+from typing import List
 
 import torch
 from torch import nn
@@ -25,9 +25,13 @@ class ICK_CMGP(nn.Module):
     control_coeffs: List[float], a list of coefficients for the control components, default to [1.0] * len(control_components)
     treatment_coeffs: List[float], a list of coefficients for the treatment components, default to [1.0] * len(treatment_components)
     shared_coeffs: List[float], a list of coefficients for the shared components, default to [1.0] * len(shared_components)
+    coeff_trainable: bool, whether the coefficients are trainable or not, default to False
+    output_binary: bool, whether the output is binary or not, default to False. If True, the output will be passed into a 
+        softmax function before returning.
     """
     def __init__(self, control_components: List[ICK], treatment_components: List[ICK], shared_components: List[ICK], 
-                 control_coeffs: List[float] = None, treatment_coeffs: List[float] = None, shared_coeffs: List[float] = None) -> None:
+                 control_coeffs: List[float] = None, treatment_coeffs: List[float] = None, shared_coeffs: List[float] = None, 
+                 coeff_trainable: bool = False, output_binary: bool = False) -> None:
         super(ICK_CMGP, self).__init__()
         self.control_components: nn.ModuleList = nn.ModuleList(control_components)
         self.treatment_components: nn.ModuleList = nn.ModuleList(treatment_components)
@@ -35,7 +39,11 @@ class ICK_CMGP(nn.Module):
         self.control_coeffs: List[float] = [1.0] * len(control_components) if control_coeffs is None else control_coeffs
         self.treatment_coeffs: List[float] = [1.0] * len(treatment_components) if treatment_coeffs is None else treatment_coeffs
         self.shared_coeffs: List[float] = [1.0] * len(shared_components) if shared_coeffs is None else shared_coeffs
+        self.coeff_trainable: bool = coeff_trainable
+        self.output_binary: bool = output_binary
         self._validate_inputs()
+        if self.coeff_trainable:
+            self._register_params()
     
     def _validate_inputs(self) -> None:
         """
@@ -44,6 +52,17 @@ class ICK_CMGP(nn.Module):
         assert all([isinstance(x, ICK) for x in self.control_components]), "control_components must be a list of ICK objects."
         assert all([isinstance(x, ICK) for x in self.treatment_components]), "treatment_components must be a list of ICK objects."
         assert all([isinstance(x, ICK) for x in self.shared_components]), "shared_components must be a list of ICK objects."
+    
+    def _register_params(self) -> None:
+        """
+        Register the coefficients as trainable parameters
+        """
+        for i in range(len(self.control_coeffs)):
+            setattr(self, "control_coeff_{}".format(i+1), nn.Parameter(torch.tensor(self.control_coeffs[i], requires_grad=True)))
+        for i in range(len(self.treatment_coeffs)):
+            setattr(self, "treatment_coeff_{}".format(i+1), nn.Parameter(torch.tensor(self.treatment_coeffs[i], requires_grad=True)))
+        for i in range(len(self.shared_coeffs)):
+            setattr(self, "shared_coeff_{}".format(i+1), nn.Parameter(torch.tensor(self.shared_coeffs[i], requires_grad=True)))
     
     def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
         """
@@ -56,10 +75,16 @@ class ICK_CMGP(nn.Module):
         Y0 = a1 * f1(x) + a3 * f3(x)
         Y1 = a2 * f2(x) + a3 * f3(x)
         """
-        control_output = sum([a * f(x) for a, f in zip(self.control_coeffs, self.control_components)])
-        treatment_output = sum([a * f(x) for a, f in zip(self.treatment_coeffs, self.treatment_components)])
-        shared_output = sum([a * f(x) for a, f in zip(self.shared_coeffs, self.shared_components)])
-        return torch.stack((control_output + shared_output, treatment_output + shared_output), dim=1)
+        if self.coeff_trainable:
+            control_output = sum([a * f(x) for a, f in zip([getattr(self, "control_coeff_{}".format(i+1)) for i in range(len(self.control_components))], self.control_components)])
+            treatment_output = sum([a * f(x) for a, f in zip([getattr(self, "treatment_coeff_{}".format(i+1)) for i in range(len(self.treatment_components))], self.treatment_components)])
+            shared_output = sum([a * f(x) for a, f in zip([getattr(self, "shared_coeff_{}".format(i+1)) for i in range(len(self.shared_components))], self.shared_components)])
+        else:
+            control_output = sum([a * f(x) for a, f in zip(self.control_coeffs, self.control_components)])
+            treatment_output = sum([a * f(x) for a, f in zip(self.treatment_coeffs, self.treatment_components)])
+            shared_output = sum([a * f(x) for a, f in zip(self.shared_coeffs, self.shared_components)])
+        output = torch.stack([control_output + shared_output, treatment_output + shared_output], dim=1)
+        return torch.sigmoid(output) if self.output_binary else output
 
 # ########################################################################################
 # MIT License
