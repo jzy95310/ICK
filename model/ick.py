@@ -53,7 +53,7 @@ class ICK(nn.Module):
         for i in range(self.num_modalities):
             self.kernels.append(eval(self.kernel_assignment[i])(**self.kernel_params[self.kernel_assignment[i]]))
         if self.num_modalities == 1 and isinstance(self.kernels[0], ImplicitNNKernel):
-            self.kernels[0] = attach_single_output_dense_layer(self.kernels[0])
+            self.kernels[0] = attach_single_output_dense_layer(self.kernels[0], self.kernels[0].activation, self.kernels[0].dropout_ratio)
         if isinstance(self.kernels[0], (ImplicitNNKernel, ImplicitRFFKernel)):
             self.latent_feature_dim = self.kernels[0].latent_feature_dim
         elif isinstance(self.kernels[0], ImplicitNystromKernel):
