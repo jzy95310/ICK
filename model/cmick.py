@@ -10,7 +10,7 @@ from typing import List
 import torch
 from torch import nn
 
-class ICK_CMGP(nn.Module):
+class CMICK(nn.Module):
     """
     Class definition of Implicit Composite Kernel-Causal Multi-task Gaussian Process (ICK-CMGP) model, which is mainly
     used for estimating the individual treatment effect (ITE) in causal inference tasks. The ITE is computed as 
@@ -32,7 +32,7 @@ class ICK_CMGP(nn.Module):
     def __init__(self, control_components: List[ICK], treatment_components: List[ICK], shared_components: List[ICK], 
                  control_coeffs: List[float] = None, treatment_coeffs: List[float] = None, shared_coeffs: List[float] = None, 
                  coeff_trainable: bool = False, output_binary: bool = False) -> None:
-        super(ICK_CMGP, self).__init__()
+        super(CMICK, self).__init__()
         self.control_components: nn.ModuleList = nn.ModuleList(control_components)
         self.treatment_components: nn.ModuleList = nn.ModuleList(treatment_components)
         self.shared_components: nn.ModuleList = nn.ModuleList(shared_components)

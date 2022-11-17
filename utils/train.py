@@ -537,7 +537,7 @@ class EnsembleTrainer(BaseTrainer):
         y_test_pred_std = torch.std(torch.stack(y_test_pred, dim=0), dim=0)
         return y_test_pred_mean.detach().cpu().numpy(), y_test_pred_std.detach().cpu().numpy(), y_test_true.detach().cpu().numpy()
 
-class CMGPEnsembleTrainer(EnsembleTrainer):
+class CMICKEnsembleTrainer(EnsembleTrainer):
     """
     Trainer class for ICK-CMGP ensemble
     Note that unlike EnsembleTrainer, all predictors in the ensemble are trained jointly instead of independently
@@ -551,14 +551,14 @@ class CMGPEnsembleTrainer(EnsembleTrainer):
                  device: torch.device = torch.device('cpu'), epochs: int = 100, patience: int = 10, verbose: int = 0, treatment_index: int = 0, 
                  logger: logging.Logger = logging.getLogger("Trainer")) -> None:
         self.treatment_index = treatment_index
-        super(CMGPEnsembleTrainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, num_jobs, model_save_dir, model_name, 
+        super(CMICKEnsembleTrainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, num_jobs, model_save_dir, model_name, 
                                                   loss_fn, device, epochs, patience, verbose, logger)
         self._validate_inputs()
     
     def _validate_inputs(self) -> None:
         assert self.treatment_index >= 0, "Treatment index must be a non-negative integer."
         assert isinstance(self.loss_fn, (FactualMSELoss, FactualCrossEntropyLoss)), "Loss function must be either FactualMSELoss or FactualCrossEntropyLoss."
-        super(CMGPEnsembleTrainer, self)._validate_inputs()
+        super(CMICKEnsembleTrainer, self)._validate_inputs()
 
     def _set_optimizer(self) -> None:
         """

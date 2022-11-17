@@ -1,2 +1,2 @@
 from .ick import *
-from .ick_cmgp import *
+from .cmick import *
