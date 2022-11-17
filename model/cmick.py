@@ -12,8 +12,8 @@ from torch import nn
 
 class CMICK(nn.Module):
     """
-    Class definition of Implicit Composite Kernel-Causal Multi-task Gaussian Process (ICK-CMGP) model, which is mainly
-    used for estimating the individual treatment effect (ITE) in causal inference tasks. The ITE is computed as 
+    Class definition of Causal Multi-task Implicit Composite Kernel (CMICK) model, which is mainly
+    used for estimating the individualized treatment effect (ITE) in causal inference tasks. The ITE is computed as 
     E[Y1-Y0|X] where Y0 and Y1 are the outcomes of the control and treatment groups, respectively, and X is the input. 
     Therefore, the forward pass of ICK-CMGP will return 2 outputs, one for control and one for treatment. 
 
@@ -66,7 +66,7 @@ class CMICK(nn.Module):
     
     def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
         """
-        Forward pass of ICK-CMGP:
+        Forward pass of CMICK:
         Return the predicted control and treatment outcomes given the input x.
         For example, let Y0 = control outcome, Y1 = treatment outcome
         Suppose we have 1 control component f1, 1 treatment component f2, 1 shared component f3, and 
