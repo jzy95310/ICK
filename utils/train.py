@@ -30,6 +30,7 @@ class BaseTrainer(ABC):
     model_name: str, the name of the trained ICK model
     loss_fn: torch.nn.modules.loss._Loss, the loss function for optimizing the ICK model
     device: torch.device, the device to train the model on
+    validation: bool, whether to validate the model during training, default to True
     epochs: int, the number of epochs to train the model for
     patience: int, the number of epochs to wait before early stopping
     verbose: int, the level of verbosity for the trainer, default to 0.
@@ -42,7 +43,8 @@ class BaseTrainer(ABC):
     def __init__(self, model: Union[torch.nn.Module, List], data_generators: Dict, optim: str, optim_params: Dict,
                  lr_scheduler: torch.optim.lr_scheduler._LRScheduler = None, model_save_dir: str = None, model_name: str = 'model.pt', 
                  loss_fn: torch.nn.modules.loss._Loss = torch.nn.MSELoss(), device: torch.device = torch.device('cpu'), 
-                 epochs: int = 100, patience: int = 10, verbose: int = 0, logger: logging.Logger = logging.getLogger("Trainer")) -> None:
+                 validation: bool = True, epochs: int = 100, patience: int = 10, verbose: int = 0, 
+                 logger: logging.Logger = logging.getLogger("Trainer")) -> None:
         self.model: Union[torch.nn.Module, List] = model
         self.data_generators: Dict = data_generators
         self.optim: str = optim
@@ -52,6 +54,7 @@ class BaseTrainer(ABC):
         self.model_name: str = model_name
         self.loss_fn: torch.nn.modules.loss._Loss = loss_fn
         self.device: torch.device = device
+        self.validation: bool = validation
         self.epochs: int = epochs
         self.patience: int = patience
         self.logger: logging.Logger = logger
@@ -146,10 +149,10 @@ class Trainer(BaseTrainer):
     """
     def __init__(self, model: torch.nn.Module, data_generators: Dict, optim: str, optim_params: Dict, lr_scheduler: torch.optim.lr_scheduler._LRScheduler = None, 
                  model_save_dir: str = None, model_name: str = 'model.pt', loss_fn: torch.nn.modules.loss._Loss = torch.nn.MSELoss(), 
-                 device: torch.device = torch.device('cpu'), epochs: int = 100, patience: int = 10, verbose: int = 0, 
+                 validation: bool = True, device: torch.device = torch.device('cpu'), epochs: int = 100, patience: int = 10, verbose: int = 0, 
                  logger: logging.Logger = logging.getLogger("Trainer")) -> None:
         super(Trainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, model_save_dir, model_name, loss_fn, 
-                                      device, epochs, patience, verbose, logger)
+                                      device, validation, epochs, patience, verbose, logger)
         self._validate_inputs()
         self._set_optimizer()
     
@@ -241,7 +244,7 @@ class Trainer(BaseTrainer):
         y_val_true = torch.empty(0).to(self.device)
         self.model.eval()
 
-        key = VAL if self.data_generators[VAL] is not None else TEST
+        key = TRAIN if not self.validation else (VAL if self.data_generators[VAL] is not None else TEST)
         with torch.no_grad():
             for batch in self.data_generators[key]:
                 data, target = self._assign_device_to_data(batch[0], batch[1])
@@ -274,12 +277,12 @@ class VariationalBayesTrainer(BaseTrainer):
     """
     def __init__(self, model: torch.nn.Module, data_generators: Dict, optim: str, optim_params: Dict, lr_scheduler: torch.optim.lr_scheduler._LRScheduler = None,
                  model_save_dir: str = None, model_name: str = 'model.pt', loss_fn: torch.nn.modules.loss._Loss = torch.nn.MSELoss(), 
-                 device: torch.device = torch.device('cpu'), epochs: int = 100, logger: logging.Logger = logging.getLogger("Trainer"), 
+                 device: torch.device = torch.device('cpu'), validation: bool = True, epochs: int = 100, logger: logging.Logger = logging.getLogger("Trainer"), 
                  patience: int = 10, verbose: int = 0, kl_weight: float = 0.1) -> None:
         self.kl_loss = bnn.BKLLoss(reduction='mean', last_layer_only=False)
         self.kl_weight: float = kl_weight
         super(VariationalBayesTrainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, model_save_dir, model_name, 
-                                                      loss_fn, device, epochs, patience, verbose, logger)
+                                                      loss_fn, device, validation, epochs, patience, verbose, logger)
         self._validate_inputs()
     
     def _validate_inputs(self) -> None:
@@ -365,9 +368,10 @@ class VariationalBayesTrainer(BaseTrainer):
         y_test_true = torch.empty(0).to(self.device)
         self.model.eval()
 
+        key = TRAIN if not self.validation else TEST
         with torch.no_grad():
             for i in range(num_samples):
-                for batch in self.data_generators[TEST]:
+                for batch in self.data_generators[key]:
                     data, target = self._assign_device_to_data(batch[0], batch[1])
                     output = self.model(data).float()
                     y_test_pred[i] = torch.cat((y_test_pred[i], output), dim=0)
@@ -388,11 +392,11 @@ class EnsembleTrainer(BaseTrainer):
     """
     def __init__(self, model: List, data_generators: Dict, optim: str, optim_params: Dict, lr_scheduler: torch.optim.lr_scheduler._LRScheduler = None, 
                  num_jobs: int = None, model_save_dir: str = None, model_name: str = 'model.pt', loss_fn: torch.nn.modules.loss._Loss = torch.nn.MSELoss(), 
-                 device: torch.device = torch.device('cpu'), epochs: int = 100, patience: int = 10, verbose: int = 0, 
+                 device: torch.device = torch.device('cpu'), validation: bool = True, epochs: int = 100, patience: int = 10, verbose: int = 0, 
                  logger: logging.Logger = logging.getLogger("Trainer")) -> None:
         self.num_jobs: int = num_jobs
         super(EnsembleTrainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, model_save_dir, model_name, 
-                                              loss_fn, device, epochs, patience, verbose, logger)
+                                              loss_fn, device, validation, epochs, patience, verbose, logger)
         self._validate_inputs()
         self._set_optimizer()
     
@@ -503,7 +507,7 @@ class EnsembleTrainer(BaseTrainer):
         y_val_pred = [torch.empty(0).to(self.device) for _ in range(len(self.model))]
         y_val_true = torch.empty(0).to(self.device)
 
-        key = VAL if self.data_generators[VAL] is not None else TEST
+        key = TRAIN if not self.validation else (VAL if self.data_generators[VAL] is not None else TEST)
         with torch.no_grad():
             for i in range(len(self.model)):
                 self.model[i].eval()
@@ -539,7 +543,7 @@ class EnsembleTrainer(BaseTrainer):
 
 class CMICKEnsembleTrainer(EnsembleTrainer):
     """
-    Trainer class for ICK-CMGP ensemble
+    Trainer class for CMICK ensemble
     Note that unlike EnsembleTrainer, all predictors in the ensemble are trained jointly instead of independently
 
     Arguments
@@ -548,11 +552,11 @@ class CMICKEnsembleTrainer(EnsembleTrainer):
     """
     def __init__(self, model: List, data_generators: Dict, optim: str, optim_params: Dict, lr_scheduler: torch.optim.lr_scheduler._LRScheduler = None, 
                  num_jobs: int = None, model_save_dir: str = None, model_name: str = 'model.pt', loss_fn: torch.nn.modules.loss._Loss = FactualMSELoss(), 
-                 device: torch.device = torch.device('cpu'), epochs: int = 100, patience: int = 10, verbose: int = 0, treatment_index: int = 0, 
+                 device: torch.device = torch.device('cpu'), validation: bool = True, epochs: int = 100, patience: int = 10, verbose: int = 0, treatment_index: int = 0, 
                  logger: logging.Logger = logging.getLogger("Trainer")) -> None:
         self.treatment_index = treatment_index
         super(CMICKEnsembleTrainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, num_jobs, model_save_dir, model_name, 
-                                                  loss_fn, device, epochs, patience, verbose, logger)
+                                                  loss_fn, device, validation, epochs, patience, verbose, logger)
         self._validate_inputs()
     
     def _validate_inputs(self) -> None:
@@ -568,7 +572,7 @@ class CMICKEnsembleTrainer(EnsembleTrainer):
     
     def _train_step(self) -> float:
         """
-        Perform a single training step for a baselearner in the ICK-CMGP ensemble
+        Perform a single training step for a baselearner in the CMICK ensemble
         """
         y_train_pred = [torch.empty(0).to(self.device) for _ in range(len(self.model))]
         y_train_true = torch.empty(0).to(self.device)
@@ -599,7 +603,7 @@ class CMICKEnsembleTrainer(EnsembleTrainer):
     
     def train(self) -> None:
         """
-        Train the ICK-CMGP ensemble
+        Train the CMICK ensemble
         """
         # initialize the early stopping counter
         best_loss = 1e9
@@ -658,13 +662,13 @@ class CMICKEnsembleTrainer(EnsembleTrainer):
     
     def validate(self) -> torch.Tensor:
         """
-        Evaluate the ICK-CMGP ensemble on the validation data
+        Evaluate the CMICK ensemble on the validation data
         """
         y_val_pred = [torch.empty(0).to(self.device) for _ in range(len(self.model))]
         y_val_true = torch.empty(0).to(self.device)
         groups = torch.empty(0).to(self.device)
 
-        key = VAL if self.data_generators[VAL] is not None else TEST
+        key = TRAIN if not self.validation else (VAL if self.data_generators[VAL] is not None else TEST)
         with torch.no_grad():
             for i in range(len(self.model)):
                 self.model[i].eval()
@@ -682,7 +686,7 @@ class CMICKEnsembleTrainer(EnsembleTrainer):
     
     def predict(self, output_binary: bool = False) -> Tuple:
         """
-        Evaluate the ICK-CMGP ensemble on the test data
+        Evaluate the CMICK ensemble on the test data
 
         Arguments
         --------------

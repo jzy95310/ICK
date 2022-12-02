@@ -6,7 +6,6 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LogisticRegression
 from bartpy.sklearnmodel import SklearnModel
-from bartpy.initializers.sklearntreeinitializer import SklearnTreeInitializer
 
 class X_Learner_RF:
 
