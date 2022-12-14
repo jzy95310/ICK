@@ -2,6 +2,7 @@
 # SEE LICENSE STATEMENT AT THE END OF THE FILE
 
 import numpy as np
+import itertools
 import torch
 from torch import nn
 import vit_pytorch as vitorch
@@ -79,6 +80,30 @@ class ImplicitNNKernel(nn.Module, ABC):
         """
         pass
 
+class BasicBlock1D(nn.Module):
+    """
+    Basic block of skip connection for 1D input
+    """
+    def __init__(self, input_dim: int, output_dim: int, num_layers: int, activation: str):
+        super(BasicBlock1D, self).__init__()
+        self.input_dim: int = input_dim
+        self.output_dim: int = output_dim
+        self.num_layers: int = num_layers
+        self.activation: str = activation
+
+        self.fc = nn.Linear(input_dim, output_dim)
+        self.act = ACTIVATIONS[activation]
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        identity = x
+        out = self.fc(x)
+        for _ in range(self.num_layers - 1):
+            out = self.act(out)
+            out = self.fc(out)
+        out += identity
+        out = self.act(out)
+        return out
+
 class ImplicitDenseNetKernel(ImplicitNNKernel):
     """
     Implicit kernel implied by a dense neural network
@@ -88,12 +113,14 @@ class ImplicitDenseNetKernel(ImplicitNNKernel):
     input_dim: int, the dimension of input features
     num_layers_per_block: int, the number of dense layers in each HIDDEN block
     num_units: int, the number of units (width) in each HIDDEN dense layer
+    skip_connection: bool, whether to use skip connection in the dense network, default to False
     """
     def __init__(self, input_dim: int, latent_feature_dim: int, num_blocks: int, num_layers_per_block: int, 
-                 num_units: int, activation: str = 'relu', dropout_ratio: float = 0.0) -> None:
+                 num_units: int, activation: str = 'relu', dropout_ratio: float = 0.0, skip_connection: bool = False) -> None:
         self.input_dim = input_dim
         self.num_layers_per_block: int = num_layers_per_block
         self.num_units: int = num_units
+        self.skip_connection: bool = skip_connection
         super(ImplicitDenseNetKernel, self).__init__(latent_feature_dim, num_blocks, activation, dropout_ratio)
 
         self.depth = (self.num_blocks - 1) * self.num_layers_per_block + 2
@@ -114,14 +141,25 @@ class ImplicitDenseNetKernel(ImplicitNNKernel):
             self.dense_blocks.append(
                 self._build_dense_block(self.input_dim, self.num_units, self.activation, self.dropout_ratio)
             )
-            for _ in range(self.num_blocks - 1):
-                self.dense_blocks.append(
-                    nn.Sequential(
-                        *[nn.Linear(self.num_units, self.num_units) for _ in range(self.num_layers_per_block)],
-                        ACTIVATIONS[self.activation],
-                        nn.Dropout(self.dropout_ratio)
+            if not self.skip_connection:
+                for _ in range(self.num_blocks - 1):
+                    self.dense_blocks.append(
+                        nn.Sequential(
+                            *list(itertools.chain.from_iterable([(layer, activation) for layer, activation in zip(
+                                [nn.Linear(self.num_units, self.num_units)] * self.num_layers_per_block, 
+                                [ACTIVATIONS[self.activation]] * self.num_layers_per_block
+                            )])), 
+                            nn.Dropout(self.dropout_ratio)
+                        )
                     )
-                )
+            else:
+                for _ in range(self.num_blocks - 1):
+                    self.dense_blocks.append(
+                        nn.Sequential(
+                            BasicBlock1D(self.num_units, self.num_units, self.num_layers_per_block, self.activation), 
+                            nn.Dropout(self.dropout_ratio)
+                        )
+                    )
             self.dense_blocks.append(nn.Linear(self.num_units, self.latent_feature_dim))
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -435,7 +473,7 @@ class ImplicitDeepViTKernel(ImplicitViTKernel):
             mlp_dim=self.mlp_dim, 
             dropout=self.dropout_ratio, 
             emb_dropout=self.emb_dropout_ratio
-        )
+        )  
 
 # ########################################################################################
 # MIT License

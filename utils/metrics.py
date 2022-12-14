@@ -3,9 +3,9 @@
 
 import numpy as np
 
-def policy_risk(y_test_pred: np.ndarray, y_test: np.ndarray, t_test: np.ndarray):
+def policy_risk_binary(y_test_pred: np.ndarray, y_test: np.ndarray, t_test: np.ndarray):
     """
-    Calculate the policy risk of a causal model.
+    Calculate the policy risk of a causal model with binary treatment
 
     Arguments
     --------------
@@ -16,32 +16,10 @@ def policy_risk(y_test_pred: np.ndarray, y_test: np.ndarray, t_test: np.ndarray)
     """
     assert len(y_test_pred.shape) == 2 and y_test_pred.shape[1] == 2, "y_test_pred must be a 2D array with 2 columns"
     y_test, t_test = y_test.reshape(-1), t_test.reshape(-1)
-    N_test = len(y_test)
     N_Pi0, N_Pi1 = np.sum(1-np.argmax(y_test_pred, axis=1)), np.sum(np.argmax(y_test_pred, axis=1))
     PiT0 = (1-np.argmax(y_test_pred, axis=1)) * (1-t_test)
     PiT1 = np.argmax(y_test_pred, axis=1) * t_test
-    # N_PiT0, N_PiT1 = np.sum(PiT0), np.sum(PiT1)
-    # print("N_Pi0: {}, N_Pi1: {}, N_PiT0: {}, N_PiT1: {}".format(N_Pi0, N_Pi1, N_PiT0, N_PiT1))
-    # return np.mean(1.-(1./N_PiT0*(PiT0*y_test*N_Pi0/N_test) + 1./N_PiT1*(PiT1*y_test*N_Pi1/N_test)))
-    # return 1.-(1./N_PiT0*np.mean(PiT0*y_test*N_Pi0/N_test) + 1./N_PiT1*np.mean(PiT1*y_test*N_Pi1/N_test))
-    return 1.-(np.mean(PiT0*y_test)*N_Pi0/N_test + np.mean(PiT1*y_test)*N_Pi1/N_test)
-
-def att_err(y_test_pred: np.ndarray, y_test: np.ndarray, t_test: np.ndarray):
-    """
-    Calculate the average treatment effect error of a causal model.
-
-    Arguments
-    --------------
-    y_test_pred: np.ndarray, a numpy array of shape (num_test_samples, 2) that contains the predicted control and 
-        treatment outcomes
-    y_test: np.ndarray, a numpy array that contains the factual outcomes
-    t_test: np.ndarray, a numpy array that contains the group assignment of each data point
-    """
-    assert len(y_test_pred.shape) == 2 and y_test_pred.shape[1] == 2, "y_test_pred must be a 2D array with 2 columns"
-    y_test, t_test = y_test.reshape(-1), t_test.reshape(-1)
-    N_T0, N_T1 = np.sum(1-t_test), np.sum(t_test)
-    att = np.sum(t_test*y_test)/N_T1 - np.sum((1-t_test)*y_test)/N_T0
-    return abs(att-np.sum((y_test_pred[:,1]-y_test_pred[:,0])*t_test)/N_T1)
+    return 1.-np.sum(y_test*(PiT0+PiT1))/(np.sum(PiT0)+np.sum(PiT1))
 
 # ########################################################################################
 # MIT License
