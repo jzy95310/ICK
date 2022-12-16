@@ -65,8 +65,8 @@ def train_val_test_split(x: Union[List[np.ndarray], np.ndarray], y: np.ndarray, 
 def create_generators_from_data(x_train: Union[List[np.ndarray], np.ndarray], y_train: np.ndarray, 
                                 x_test: Union[List[np.ndarray], np.ndarray], y_test: np.ndarray, 
                                 x_val: Union[List[np.ndarray], np.ndarray, None] = None, y_val: Union[np.ndarray, None] = None, 
-                                train_batch_size: int = 32, val_batch_size: int = 64, 
-                                test_batch_size: int = 64, x_transform: Union[Callable, None] = None) -> Dict:
+                                train_batch_size: int = 32, val_batch_size: int = 64, test_batch_size: int = 64, 
+                                x_transform: Union[Callable, None] = None, drop_last: bool = False) -> Dict:
     """
     Create the data generators for the ICK model
 
@@ -77,14 +77,15 @@ def create_generators_from_data(x_train: Union[List[np.ndarray], np.ndarray], y_
     test_batch_size: int, batch size of the data generator for testing
     x_transform: Union[Callable, None], a torchvision.transforms function that transforms all sources of information 
         in x whose dimension are 3 or higher
+    drop_last: bool, whether to drop the last batch if it is smaller than the batch size
     """
     train_data_generator = create_ick_data_generator(x_train, y_train, shuffle_dataloader=True, batch_size=train_batch_size, 
-                                                     x_transform=x_transform)
+                                                     x_transform=x_transform, drop_last=drop_last)
     test_data_generator = create_ick_data_generator(x_test, y_test, shuffle_dataloader=False, batch_size=test_batch_size, 
-                                                    x_transform=x_transform)
+                                                    x_transform=x_transform, drop_last=drop_last)
     if x_val is not None and y_val is not None:
         val_data_generator = create_ick_data_generator(x_val, y_val, shuffle_dataloader=False, batch_size=val_batch_size, 
-                                                       x_transform=x_transform)
+                                                       x_transform=x_transform, drop_last=drop_last)
     else:
         val_data_generator = None
     

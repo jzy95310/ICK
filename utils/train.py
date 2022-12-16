@@ -93,6 +93,7 @@ class BaseTrainer(ABC):
         if not isinstance(self.loss_fn, torch.nn.modules.loss._Loss):
             raise TypeError("loss_fn must be an instance of torch.nn.modules.loss._Loss")
         if not isinstance(self.device, torch.device):
+            print(self.device)
             raise TypeError("device must be an instance of torch.device")
         if not isinstance(self.logger, logging.Logger):
             raise TypeError("logger must be an instance of logging.Logger")
@@ -149,7 +150,7 @@ class Trainer(BaseTrainer):
     """
     def __init__(self, model: torch.nn.Module, data_generators: Dict, optim: str, optim_params: Dict, lr_scheduler: torch.optim.lr_scheduler._LRScheduler = None, 
                  model_save_dir: str = None, model_name: str = 'model.pt', loss_fn: torch.nn.modules.loss._Loss = torch.nn.MSELoss(), 
-                 validation: bool = True, device: torch.device = torch.device('cpu'), epochs: int = 100, patience: int = 10, verbose: int = 0, 
+                 device: torch.device = torch.device('cpu'), validation: bool = True, epochs: int = 100, patience: int = 10, verbose: int = 0, 
                  logger: logging.Logger = logging.getLogger("Trainer")) -> None:
         super(Trainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, model_save_dir, model_name, loss_fn, 
                                       device, validation, epochs, patience, verbose, logger)
@@ -543,7 +544,7 @@ class EnsembleTrainer(BaseTrainer):
 
 class CMICKEnsembleTrainer(EnsembleTrainer):
     """
-    Trainer class for CMICK ensemble
+    Trainer class for Causal Multi-task Implicit Composite Kernel (CMICK) ensemble
     Note that unlike EnsembleTrainer, all predictors in the ensemble are trained jointly instead of independently
 
     Arguments

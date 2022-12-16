@@ -63,7 +63,7 @@ class DataGenerator(Dataset):
                 return [self.x[idx]], self.y[idx]
 
 def create_ick_data_generator(x: Union[List[np.ndarray], np.ndarray], y: np.ndarray, shuffle_dataloader: bool, batch_size: int, 
-                              x_transform: Union[Callable, None] = None) -> DataLoader:
+                              x_transform: Union[Callable, None] = None, drop_last: bool = False) -> DataLoader:
     """
     Function to create a data generator for ICK
 
@@ -76,13 +76,14 @@ def create_ick_data_generator(x: Union[List[np.ndarray], np.ndarray], y: np.ndar
     batch_size: int, batch size of the data generator
     x_transform: a torchvision.transforms function that transforms all sources of information in x whose dimension
         are 3 or higher
+    drop_last: bool, whether to drop the last batch if it is smaller than the batch size
 
     Return:
     --------------
     A torch.utils.data.DataLoader which can generate data for learning ICK
     """
     dataset = DataGenerator(x, y, x_transform=x_transform)
-    return DataLoader(dataset, shuffle=shuffle_dataloader, batch_size=batch_size)
+    return DataLoader(dataset, shuffle=shuffle_dataloader, batch_size=batch_size, drop_last=drop_last)
 
 # ########################################################################################
 # MIT License

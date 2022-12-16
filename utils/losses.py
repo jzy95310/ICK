@@ -5,6 +5,7 @@ from typing import Optional
 import torch
 import torch.nn.functional as F
 from torch.nn.modules.loss import _Loss, _WeightedLoss
+from geomloss import SamplesLoss
 
 class FactualMSELoss(_Loss):
     """
@@ -18,7 +19,7 @@ class FactualMSELoss(_Loss):
     """
     __constants__ = ['reduction']
 
-    def __init__(self, size_average:bool = None, reduce: bool = None, reduction: str = 'mean', regularize_var: bool = False) -> None:
+    def __init__(self, size_average: bool = None, reduce: bool = None, reduction: str = 'mean', regularize_var: bool = False) -> None:
         self.regularize_var = regularize_var
         super(FactualMSELoss, self).__init__(size_average, reduce, reduction)
     
@@ -30,7 +31,7 @@ class FactualMSELoss(_Loss):
         --------------
         prediction: torch.Tensor, a tensor of shape (num_estimators, batch_size, 2) that contains the predicted 
             control and treatment outcomes for all estimators in the ensemble
-        target: torch.Tensor, a tensor of shape (batch_size) that contains the factual outcomes
+        target: torch.Tensor, a tensor of shape (batch_size,) that contains the true factual outcomes
         group: torch.Tensor, a tensor of shape (batch_size,) that contains the group assignment of each data point
 
         Returns
@@ -72,7 +73,7 @@ class FactualCrossEntropyLoss(_WeightedLoss):
         --------------
         prediction: torch.Tensor, a tensor of shape (num_estimators, batch_size, 2) that contains the predicted 
             control and treatment outcomes for all estimators in the ensemble
-        target: torch.Tensor, a tensor of shape (batch_size) that contains the factual outcomes
+        target: torch.Tensor, a tensor of shape (batch_size,) that contains the true factual outcomes
         group: torch.Tensor, a tensor of shape (batch_size,) that contains the group assignment of each data point
 
         Returns
@@ -87,6 +88,46 @@ class FactualCrossEntropyLoss(_WeightedLoss):
             return factual_err + torch.mean(counterfactual_var)
         else:
             return factual_err
+
+class CFRLoss(_Loss):
+    """
+    Counterfactual regression loss as proposed by Shalit et al. (2017)
+
+    Arguments
+    --------------
+    alpha: float, regularization hyperparameter for integral probability metric (IPM), default to 1e-3
+    """
+    ipm_metric = {
+        'W1': SamplesLoss(loss="sinkhorn", p=1), 
+        'W2': SamplesLoss(loss="sinkhorn", p=2), 
+        'MMD': SamplesLoss(loss="energy")
+    }
+
+    def __init__(self, size_average: bool = None, reduce: bool = None, reduction: str = 'mean', 
+                 alpha: float = 1e-3, metric: str = 'W2') -> None:
+        assert metric in self.ipm_metric.keys(), "The metric must be one of the following: {}".format(self.ipm_metric.keys())
+        self.alpha = alpha
+        self.metric = metric
+        super(CFRLoss, self).__init__(size_average, reduce, reduction)
+    
+    def forward(self, prediction: torch.Tensor, target: torch.Tensor, group: torch.Tensor, 
+                phi_output: torch.Tensor) -> torch.Tensor:
+        """
+        Compute the counterfactual regression loss between the factual outcomes and the predicted outcomes
+
+        Arguments
+        --------------
+        prediction: torch.Tensor, a tensor of shape (batch_size,) that contains the predicted outcomes
+        target: torch.Tensor, a tensor of shape (batch_size,) that contains the true factual outcomes
+        group: torch.Tensor, a tensor of shape (batch_size,) that contains the group assignment of each data point
+        phi_output: torch.Tensor, a tensor of shape (batch_size, phi_width) that contains the output
+            from the representation network Phi
+        """
+        weight = group/(2*torch.mean(group)) + (1-group)/(2*(1-torch.mean(group)))
+        phi0, phi1 = phi_output[group==0], phi_output[group==1]
+        factual_err = torch.mean(weight*(target-prediction)**2)
+        imbalance_term = self.ipm_metric[self.metric](phi0, phi1)
+        return factual_err + self.alpha*imbalance_term
 
 # ########################################################################################
 # MIT License

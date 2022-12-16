@@ -54,6 +54,12 @@ def matern_type2_kernel_nys(x:torch.Tensor, y:torch.Tensor, std:float=1., length
     sq_diff = torch.sum((x-y)**2, dim=2)
     return std*(1.+torch.sqrt(torch.tensor(5.))*diff/lengthscale+5*sq_diff/(3*lengthscale**2))*torch.exp(-torch.sqrt(torch.tensor(5.))*diff/lengthscale) + noise*(diff==0)
 
+# Linear kernel with noise
+def linear_kernel_nys(x:torch.Tensor, y:torch.Tensor, std:float=1., c:float=0., noise:float=0.5) -> torch.Tensor:
+    x, y = _reshape_inputs(x, y)
+    diff = torch.sum(torch.abs(x-y), dim=2)
+    return std*torch.sum((x-c)*(y-c),dim=2) + noise*(diff==0)
+
 # Spectral mixture kernel for 1D data
 def spectral_mixture_kernel_1d_nys(x:torch.Tensor, y:torch.Tensor, weight:List[float]=[1.], mean:List[float]=[0.], 
                                    cov:List[float]=[0.5], noise:List[float]=0.5) -> torch.Tensor:
