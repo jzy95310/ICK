@@ -189,7 +189,7 @@ def build_cmnn_ensemble(input_dim, load_weights=False):
         )
         if load_weights:
             for f in ['f11', 'f12', 'f13', 'f21', 'f22', 'f23']:
-                eval(f).kernels[0].load_state_dict(torch.load('./checkpoints/ick_cmgp_acic.pt')['model_'+str(i+1)][f])
+                eval(f).kernels[0].load_state_dict(torch.load('./checkpoints/cmnn_twins.pt')['model_'+str(i+1)][f])
         else:
             model_weights = {
                 'f11': f11.kernels[0].state_dict(), 'f12': f12.kernels[0].state_dict(), 'f13': f13.kernels[0].state_dict(),

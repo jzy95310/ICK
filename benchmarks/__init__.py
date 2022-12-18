@@ -6,3 +6,4 @@ from .ccn import *
 from .cevae_modified import *
 from .cmgp_modified import *
 from .x_learner import *
+from .cfrnet import *
