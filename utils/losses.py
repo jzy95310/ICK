@@ -98,9 +98,9 @@ class CFRLoss(_Loss):
     alpha: float, regularization hyperparameter for integral probability metric (IPM), default to 1e-3
     """
     ipm_metric = {
-        'W1': SamplesLoss(loss="sinkhorn", p=1), 
-        'W2': SamplesLoss(loss="sinkhorn", p=2), 
-        'MMD': SamplesLoss(loss="energy")
+        'W1': SamplesLoss(loss="sinkhorn", p=1, backend='tensorized'), 
+        'W2': SamplesLoss(loss="sinkhorn", p=2, backend='tensorized'), 
+        'MMD': SamplesLoss(loss="energy", backend='tensorized')
     }
 
     def __init__(self, size_average: bool = None, reduce: bool = None, reduction: str = 'mean', 

@@ -1,15 +1,17 @@
 import os, sys, copy, random
+import pickle as pkl
 sys.path.insert(0, '../../')
 sys.path.append('/datacommons/carlsonlab/yl407/packages')
 import numpy as np
 import pandas as pd
+from collections import defaultdict
 import matplotlib.pyplot as plt
 from tqdm.notebook import trange
-import time, GPy
+import torch
 from sklearn.preprocessing import StandardScaler
 from scipy.interpolate import interp1d
-from cmgp.utils.metrics import sqrt_PEHE_with_diff
 
+from data.TWINS.data_twins import load
 from kernels.nn import ImplicitDenseNetKernel
 from model.ick import ICK
 from model.ick_cmgp import ICK_CMGP
@@ -17,7 +19,9 @@ from benchmarks.cmgp_modified import CMGP
 from benchmarks.cevae_modified import *
 from benchmarks.ccn import cn_g, weights_init
 from benchmarks.x_learner import X_Learner_RF, X_Learner_BART
-from utils.train import CMGPEnsembleTrainer
+from benchmarks.cfrnet import DenseCFRNet
+from benchmarks.train_benchmarks import CFRNetTrainer
+from utils.train import CMICKEnsembleTrainer
 from utils.losses import *
 from utils.helpers import *
 from ganite import Ganite
@@ -32,42 +36,75 @@ torch.cuda.manual_seed_all(2020)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
-X_train_original, W_train_original, Y_train_original, \
-Y_train_full_original, X_test_original, Y_test_original = load("twins")
+def sqrt_PEHE_with_diff(y: np.ndarray, hat_y: np.ndarray) -> float:
+    """
+    Precision in Estimation of Heterogeneous Effect
+    PEHE reflects the ability to capture individual variation in treatment effects.
+    Args:
+        y: expected outcome.
+        hat_y: estimated outcome difference.
+    """
+    return np.sqrt(np.mean(((y[:, 1] - y[:, 0]) - hat_y) ** 2))
 
-
-def load_and_preprocess_data(N_train):
-    random_id_train = random.sample(range(X_train_original.shape[0]), N_train)
+def load_and_preprocess_data(train_ratio, test_ratio, random_seed=0, in_sample=False):
+    X_train_original, W_train_original, Y_train_original, \
+    Y_train_full_original, X_test_original, Y_test_original = load(
+        "../../data/TWINS/Twin_Data.csv.gz", train_ratio=1-test_ratio, seed=random_seed)
+    N = len(X_train_original) + len(X_test_original)
 
     # Training data
-    X_train = X_train_original[random_id_train,]
-    T_train = W_train_original[random_id_train].reshape(-1,1)
-    Y_train = Y_train_original[random_id_train].reshape(-1,1)
+    X_train = X_train_original[:int(N*train_ratio),:]
+    T_train = W_train_original[:int(N*train_ratio)].reshape(-1,1)
+    Y_train = Y_train_original[:int(N*train_ratio)].reshape(-1,1)
+    
+    # Validation data
+    X_val = X_train_original[int(N*train_ratio):int(N*(1-test_ratio)),:]
+    T_val = W_train_original[int(N*train_ratio):int(N*(1-test_ratio))].reshape(-1,1)
+    Y_val = Y_train_original[int(N*train_ratio):int(N*(1-test_ratio))].reshape(-1,1)
 
     # Test data
     X_test = np.vstack([X_test_original,X_test_original])
     T_test = np.hstack([np.zeros_like(X_test_original[:,1]),np.ones_like(X_test_original[:,1])]).reshape(-1,1)
     Y_test = np.concatenate([Y_test_original[:, 0],Y_test_original[:, 1]]).reshape(-1,1)
 
-    mu0_test = Y_test_original[:, 1]
-    mu1_test =  Y_test_original[:, 0]
+    mu0_test = Y_test_original[:, 0]
+    mu1_test =  Y_test_original[:, 1]
     mu_test = mu1_test - mu0_test
-    data = {'X_train': X_train, 'T_train': T_train, \
-            'Y_train': Y_train, 'X_test': X_test, \
-            'mu_test': mu_test, 'X_test_original': X_test_original,\
-            'Y_test_original': Y_test_original}
-
-    # Initialize dataloaders
-    data_train = [X_train, T_train]
-    data_test = [X_test, T_test]
-    data_generators = create_generators_from_data(data_train, Y_train, data_test, Y_test,
-                                                  train_batch_size=256, test_batch_size=1000)
+    
+    # Initialize data and dataloaders
+    if in_sample:
+        _, T_full, _, _, _, _ = load(
+            "../../data/TWINS/Twin_Data.csv.gz", train_ratio=1, seed=random_seed)
+        _, _, _, _, X_full, Y_full = load(
+            "../../data/TWINS/Twin_Data.csv.gz", train_ratio=0, seed=random_seed)
+        X_train_val, T_train_val, Y_train_val = X_full[:int(N*(1-test_ratio)),:], T_full[:int(N*(1-test_ratio))], \
+                                                Y_full[:int(N*(1-test_ratio)),:]
+        mu_test = Y_train_val[:,1] - Y_train_val[:,0]
+        data = {'X_train': X_train, 'T_train': T_train, \
+                'Y_train': Y_train, 'X_test': X_test, \
+                'mu_test': mu_test, 'X_test_original': X_train_val,\
+                'Y_test_original': Y_train_val}
+        data_train = [X_train, T_train]
+        data_val = [X_val, T_val]
+        data_train_val = [X_train_val, T_train_val]
+        data_generators = create_generators_from_data(data_train, Y_train, data_train_val, Y_train_val, data_val, Y_val,
+                                                      train_batch_size=256, val_batch_size=1000, test_batch_size=1000)
+    else:
+        mu_test = Y_test_original[:,1] - Y_test_original[:,0]
+        data = {'X_train': X_train, 'T_train': T_train, \
+                'Y_train': Y_train, 'X_test': X_test, \
+                'mu_test': mu_test, 'X_test_original': X_test_original,\
+                'Y_test_original': Y_test_original}
+        data_train = [X_train, T_train]
+        data_val = [X_val, T_val]
+        data_test = [X_test, T_test]
+        data_generators = create_generators_from_data(data_train, Y_train, data_test, Y_test, data_val, Y_val, 
+                                                      train_batch_size=256, val_batch_size=1000, test_batch_size=1000)
     return data_generators, data
 
-
-def build_ick_cmgp_ensemble(input_dim, load_weights=False):
-    alpha11, alpha12, alpha13 = 1.0, 1.0, 1.0
-    alpha21, alpha22, alpha23 = 1.0, 1.0, 1.0
+def build_cmnn_ensemble(input_dim, load_weights=False):
+    alpha11, alpha12, alpha13 = 1.0, 1.0, 0.1
+    alpha21, alpha22, alpha23 = 1.0, 1.0, 0.1
     num_estimators = 10
 
     ensemble, ensemble_weights = [], {}
@@ -168,12 +205,11 @@ def build_ick_cmgp_ensemble(input_dim, load_weights=False):
     if not load_weights:
         if not os.path.exists('./checkpoints'):
             os.makedirs('./checkpoints')
-        torch.save(ensemble_weights, './checkpoints/ick_cmgp_acic.pt')
+        torch.save(ensemble_weights, './checkpoints/cmnn_twins.pt')
 
     return ensemble
 
-
-def fit_and_evaluate_ick_cmgp(ensemble, data_generators, mu_test, lr, treatment_index=1):
+def fit_and_evaluate_cmnn(ensemble, data_generators, mu_test, lr, treatment_index=1, in_sample=False):
     # The index of "T_train" in "data_train" is 1
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     optim = 'sgd'
@@ -182,8 +218,8 @@ def fit_and_evaluate_ick_cmgp(ensemble, data_generators, mu_test, lr, treatment_
         'momentum': 0.99,
         'weight_decay': 1e-4
     }
-    epochs, patience = 1000, 10
-    trainer = CMGPEnsembleTrainer(
+    epochs, patience = 1000, 20
+    trainer = CMICKEnsembleTrainer(
         model=ensemble,
         data_generators=data_generators,
         optim=optim,
@@ -194,33 +230,27 @@ def fit_and_evaluate_ick_cmgp(ensemble, data_generators, mu_test, lr, treatment_
         patience=patience,
         treatment_index=treatment_index
     )
-    train_start = time.time()
     trainer.train()
-    train_time = time.time() - train_start
 
     mean_test_pred, std_test_pred, y_test_true = trainer.predict()
-    mu_test_pred = mean_test_pred[range(len(Y_test_original),\
-                                        len(mean_test_pred)),1] -mean_test_pred[range(len(Y_test_original)),0]
+    if in_sample:
+        mu_test_pred = mean_test_pred[:,1] - mean_test_pred[:,0]
+    else:
+        mu_test_pred = mean_test_pred[range(len(mean_test_pred)//2,len(mean_test_pred)),1] - \
+                       mean_test_pred[range(len(mean_test_pred)//2),0]
     pehe_test = np.sqrt(np.mean((mu_test_pred - mu_test) ** 2))
-    print('PEHE (ICK-CMGP):             %.4f' % (pehe_test))
+    print('PEHE (CMNN):             %.4f' % (pehe_test))
 
-    return pehe_test, train_time
-
+    return pehe_test
 
 def fit_and_evaluate_original_cmgp(data):
     X_train, T_train, Y_train = data['X_train'], data['T_train'], data['Y_train']
     X_test, Y_test = data['X_test_original'], data['Y_test_original']
-    #K0 = GPy.kern.MLP(X_train.shape[1], weight_variance=0.1, bias_variance=0.1, ARD=False)
-    #K1 = GPy.kern.MLP(X_train.shape[1], weight_variance=0.2, bias_variance=0.2, ARD=False)
-    train_start = time.time()
     cmgp_model = CMGP(X_train, T_train, Y_train)
-    train_time = time.time() - train_start
     pred = cmgp_model.predict(X_test, return_var=False)
     pehe_test = sqrt_PEHE_with_diff(Y_test, pred)
     print('PEHE (CMGP):             %.4f' % (pehe_test))
-
-    return pehe_test, train_time
-
+    return pehe_test
 
 def fit_and_evaluate_cevae(data):
     lr = 1e-4
@@ -266,8 +296,7 @@ def fit_and_evaluate_cevae(data):
 
     # Training
     loss = []
-    train_start = time.time()
-    for _ in tqdm(range(train_iters)):
+    for _ in tqdm(range(train_iters), position=0, leave=True):
         i = np.random.choice(X_train.shape[0],size=batch_size,replace=False)
         Y_train_shuffled = Y_train[i,:].to(device)
         X_train_shuffled = X_train[i,:].to(device)
@@ -320,14 +349,13 @@ def fit_and_evaluate_cevae(data):
         objective.backward()
         # Update step
         optimizer.step()
-    train_time = time.time() - train_start
         
     # Evaluation
     Y0_pred, Y1_pred = [], []
     t_infer = q_t_x_dist(X_test)
 
     eval_iters = 1000
-    for _ in tqdm(range(eval_iters)):
+    for _ in tqdm(range(eval_iters), position=0, leave=True):
         ttmp = t_infer.sample()
         y_infer = q_y_xt_dist(X_test, ttmp)
 
@@ -344,159 +372,131 @@ def fit_and_evaluate_cevae(data):
     mu_test = data['mu_test']
     
     mu_test_pred = mu1_test_pred - mu0_test_pred
-    
     pehe_test = np.sqrt(np.mean((mu_test_pred - mu_test) ** 2))
     print('PEHE (CEVAE):             %.4f' % (pehe_test))
     
-    return pehe_test, train_time
-
-
-def fit_and_evaluate_ccn(data):
-    lr = 1e-4
-    batch_size = int(data['X_train'].shape[0]/8)
-    train_iters = 20000
-    X_train, T_train, Y_train, X_test = torch.tensor(data['X_train']).float(), torch.tensor(data['T_train']).float(), \
-                                        torch.tensor(data['Y_train']).float(), torch.tensor(data['X_test_original']).float()
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    g0 = cn_g(X_train.shape[1]).to(device)
-    g1 = cn_g(X_train.shape[1]).to(device)
-    g0.apply(weights_init)
-    g1.apply(weights_init)
-    gloss = nn.BCELoss()
-    optimizer_g = optim.Adam(list(g0.parameters()) + list(g1.parameters()), lr=lr)
-
-    train_start = time.time()
-    g_loss = []
-    for _ in trange(train_iters):
-        i = np.random.choice(X_train.shape[0], size=batch_size, replace=False)
-        ys = Y_train[i,:].to(device)
-        xs = X_train[i,:].to(device)
-        trts = T_train[i,:].to(device)
-        yhat = torch.rand_like(ys).to(device)*(Y_train.max()-Y_train.min()) + Y_train.min()
-
-        # Train g-network with f(yhat) being uniform distribution covering observed outcome
-        optimizer_g.zero_grad()
-        with torch.no_grad():
-            ylt = (ys < yhat).float()
-
-        qhat_logit0 = g0(yhat, xs)
-        qhat_logit1 = g1(yhat, xs)
-        qhat_logit = qhat_logit0*(1-trts) + qhat_logit1*trts
-
-        gl = gloss(torch.sigmoid(qhat_logit), ylt)
-        gl.backward()
-        optimizer_g.step()
-        g_loss.append(gl)
-    train_time = time.time() - train_start
-
-    # Evaluation
-    g0.eval()
-    g1.eval()
-
-    poss_vals = 4000
-    y_poss = torch.linspace(Y_train.min(),Y_train.max(),poss_vals).reshape(-1,1)
-    y_possnp = np.linspace(Y_train.min(),Y_train.max(),poss_vals)
-    mu_test_pred = np.zeros(X_test.shape[0])
-    xtest = X_test.to(device)
-
-    for i in trange(X_test.shape[0]):
-        probs0 = torch.sigmoid(g0(y_poss.to(device),xtest[i].repeat(poss_vals,1).to(device))).detach().cpu().numpy().ravel()
-        probs0[0] = 0
-        probs0[-1] = 1
-        try:
-            mu_tmp0 = interp1d(probs0,y_possnp)(np.random.uniform(0.005,0.995,4000)).mean()
-        except:
-            pass
-        probs1 = torch.sigmoid(g1(y_poss.to(device),xtest[i].repeat(poss_vals,1).to(device))).detach().cpu().numpy().ravel()
-        probs1[0]=0
-        probs1[-1]=1
-        try:
-            mu_tmp1 = interp1d(probs1,y_possnp)(np.random.uniform(0.005,0.995,4000)).mean()
-        except:
-            pass
-        mu_test_pred[i] = mu_tmp1 - mu_tmp0
-
-    mu_test = data['mu_test']
-    pehe_test = np.sqrt(np.mean((mu_test_pred - mu_test) ** 2))
-    print('PEHE (CCN):             %.4f' % (pehe_test))
-    return pehe_test, train_time
+    return pehe_test
 
 def fit_and_evaluate_x_learner_rf(data):
     X_train, T_train, Y_train, X_test = data['X_train'], data['T_train'], data['Y_train'], data['X_test_original']
     x_learner_rf = X_Learner_RF()
-    train_start = time.time()
     x_learner_rf.fit(X_train, T_train, Y_train)
-    train_time = time.time() - train_start
     mu_test_pred = x_learner_rf.predict(X_test)
     mu_test = data['mu_test']
     pehe_test = np.sqrt(np.mean((mu_test_pred - mu_test) ** 2))
     print('PEHE (X-learner-RF):             %.4f' % (pehe_test))
-    return pehe_test, train_time
+    return pehe_test
 
 def fit_and_evaluate_x_learner_bart(data):
     X_train, T_train, Y_train, X_test = data['X_train'], data['T_train'], data['Y_train'], data['X_test_original']
     x_learner_bart = X_Learner_BART(n_trees=20)
-    train_start = time.time()
     x_learner_bart.fit(X_train, T_train, Y_train)
-    train_time = time.time() - train_start
     mu_test_pred = x_learner_bart.predict(X_test)
     mu_test = data['mu_test']
     pehe_test = np.sqrt(np.mean((mu_test_pred - mu_test) ** 2))
     print('PEHE (X-learner-BART):             %.4f' % (pehe_test))
-    return pehe_test, train_time
+    return pehe_test
 
 def fit_and_evaluate_ganite(data):
     X_train, T_train, Y_train, X_test = data['X_train'], data['T_train'], data['Y_train'],data['X_test_original']
     Y_test = data['Y_test_original']
-    train_start = time.time()
     model = Ganite(X_train, T_train, Y_train, num_iterations=500)
-    train_time = time.time() - train_start
     pred = model(X_test).cpu().detach().numpy()
     pehe_test = sqrt_PEHE_with_diff(Y_test, pred)
     print('PEHE (GANITE):             %.4f' % (pehe_test))
 
-    return pehe_test, train_time
+    return pehe_test
+
+def fit_and_evaluate_cfrnet(input_dim, phi_depth, phi_width, h_depth, h_width, data_generators, 
+                            mu_test, lr, alpha, metric='W2', treatment_index=1, load_weights=False, in_sample=False):
+    cfrnet = DenseCFRNet(input_dim, phi_depth, phi_width, h_depth, h_width, activation='tanh')
+    if load_weights:
+        cfrnet.load_state_dict(torch.load('./checkpoints/cfrnet_twins.pt'))
+    else:
+        if not os.path.exists('./checkpoints'):
+            os.makedirs('./checkpoints')
+        torch.save(cfrnet.state_dict(), './checkpoints/cfrnet_twins.pt')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    optim = 'sgd'
+    optim_params = {
+        'lr': lr, 
+        'momentum': 0.99,
+        'weight_decay': 1e-4
+    }
+    epochs, patience = 1000, 20
+    trainer = CFRNetTrainer(
+        model=cfrnet,
+        data_generators=data_generators,
+        optim=optim,
+        optim_params=optim_params, 
+        model_save_dir=None,
+        loss_fn=CFRLoss(alpha=alpha,metric=metric),
+        device=device,
+        epochs=epochs,
+        patience=patience, 
+        treatment_index=treatment_index
+    )
+    trainer.train()
     
+    y_test_pred, y_test_true = trainer.predict()
+    if in_sample:
+        mu_test_pred = y_test_pred[:,1] - y_test_pred[:,0]
+    else:
+        mu_test_pred = y_test_pred[range(len(y_test_pred)//2,len(y_test_pred)),1] - \
+                       y_test_pred[range(len(y_test_pred)//2),0]
+    pehe_test = np.sqrt(np.mean((mu_test_pred - mu_test) ** 2))
+    print('PEHE (CFRNet):             %.4f' % (pehe_test))
+    
+    return pehe_test
 
 def main():
-    N_train = [100,200,300,400,500,1000,1500,2000,2500,3000]
-    lrs = [1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4]
-    res = {k: {} for k in N_train}
-    for i in trange(len(N_train)):
-        print("i=",i)
-        data_generators, data = load_and_preprocess_data(N_train[i])
-        input_dim = data['X_train'].shape[1]
-        # Make sure the ICK-CMGP ensemble has the same starting point for each experimental run
-        ensemble = build_ick_cmgp_ensemble(input_dim, load_weights=(i!=0))
-        sqrt_pehe_cmick, train_time_cmick = fit_and_evaluate_ick_cmgp(
-            ensemble, data_generators, data['mu_test'], lr=lrs[i])
-        res[N_train[i]]['sqrt_pehe_cmick'] = sqrt_pehe_cmick
-        res[N_train[i]]['train_time_cmick'] = train_time_cmick
-        sqrt_pehe_cmgp, train_time_cmgp = fit_and_evaluate_original_cmgp(data)
-        res[N_train[i]]['sqrt_pehe_cmgp'] = sqrt_pehe_cmgp
-        res[N_train[i]]['train_time_cmgp'] = train_time_cmgp
-        sqrt_pehe_cevae, train_time_cevae = fit_and_evaluate_cevae(data)
-        res[N_train[i]]['sqrt_pehe_cevae'] = sqrt_pehe_cevae
-        res[N_train[i]]['train_time_cevae'] = train_time_cevae
-        #sqrt_pehe_ccn, train_time_ccn = fit_and_evaluate_ccn(data)
-        #res[N_train[i]]['sqrt_pehe_ccn'] = sqrt_pehe_ccn
-        #res[N_train[i]]['train_time_ccn'] = train_time_ccn
-        sqrt_pehe_ganite, train_time_ganite = fit_and_evaluate_ganite(data)
-        res[N_train[i]]['sqrt_pehe_ganite'] = sqrt_pehe_ganite
-        res[N_train[i]]['train_time_ganite'] = train_time_ganite
-        sqrt_pehe_x_learner_rf, train_time_x_learner_rf = fit_and_evaluate_x_learner_rf(data)
-        res[N_train[i]]['sqrt_pehe_x_learner_rf'] = sqrt_pehe_x_learner_rf
-        res[N_train[i]]['train_time_x_learner_rf'] = train_time_x_learner_rf
-        sqrt_pehe_x_learner_bart, train_time_x_learner_bart = fit_and_evaluate_x_learner_bart(data)
-        res[N_train[i]]['sqrt_pehe_x_learner_bart'] = sqrt_pehe_x_learner_bart
-        res[N_train[i]]['train_time_x_learner_bart'] = train_time_x_learner_bart
+    train_ratio, test_ratio, n_iters = 0.56, 0.20, 10
+    res = {'in-sample': defaultdict(list), 'out-sample': defaultdict(list)}
+    in_sample = [True, False]
+    for s in in_sample:
+        print("Setting: {}".format("In-sample" if s else "Out-of-sample"))
+        s_str = 'in-sample' if s else 'out-sample'
+        for i in trange(n_iters):
+            print("Iteration {}".format(i+1))
+            data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_seed=i, in_sample=s)
+            input_dim = data['X_train'].shape[1]
+            # Make sure the ICK-CMGP ensemble has the same starting point for each experimental run
+            ensemble = build_cmnn_ensemble(input_dim, load_weights=(i!=0))
+            sqrt_pehe_cmnn = fit_and_evaluate_cmnn(
+                ensemble, data_generators, data['mu_test'], lr=2e-3, in_sample=s)
+            res[s_str]['sqrt_pehe_cmnn'].append(sqrt_pehe_cmnn)
+            sqrt_pehe_cmgp = fit_and_evaluate_original_cmgp(data)
+            res[s_str]['sqrt_pehe_cmgp'].append(sqrt_pehe_cmgp)
+            sqrt_pehe_cevae = fit_and_evaluate_cevae(data)
+            res[s_str]['sqrt_pehe_cevae'].append(sqrt_pehe_cevae)
+            sqrt_pehe_ganite = fit_and_evaluate_ganite(data)
+            res[s_str]['sqrt_pehe_ganite'].append(sqrt_pehe_ganite)
+            sqrt_pehe_x_learner_rf = fit_and_evaluate_x_learner_rf(data)
+            res[s_str]['sqrt_pehe_x_learner_rf'].append(sqrt_pehe_x_learner_rf)
+            sqrt_pehe_x_learner_bart = fit_and_evaluate_x_learner_bart(data)
+            res[s_str]['sqrt_pehe_x_learner_bart'].append(sqrt_pehe_x_learner_bart)
+            sqrt_pehe_cfrnet_wass = fit_and_evaluate_cfrnet(
+                input_dim, 2, 512, 2, 512, data_generators, data['mu_test'], lr=1e-4, 
+                alpha=1, metric='W2', treatment_index=1, load_weights=(i!=0), in_sample=s)
+            res[s_str]['sqrt_pehe_cfrnet_wass'].append(sqrt_pehe_cfrnet_wass)
+            sqrt_pehe_cfrnet_mmd = fit_and_evaluate_cfrnet(
+                input_dim, 2, 512, 2, 512, data_generators, data['mu_test'], lr=1e-4, 
+                alpha=1, metric='MMD', treatment_index=1, load_weights=(i!=0), in_sample=s)
+            res[s_str]['sqrt_pehe_cfrnet_mmd'].append(sqrt_pehe_cfrnet_mmd)
     try:
         os.makedirs('./results')
     except FileExistsError:
         print('Directory already exists.')
     with open('./results/twins_results.pkl', 'wb') as fp:
         pkl.dump(res, fp)
+    
+    for s in in_sample:
+        print("Setting: {}".format("In-sample" if s else "Out-of-sample"))
+        s_str = 'in-sample' if s else 'out-sample'
+        for k in res[s_str].keys():
+            method = k.split('_pehe_')[-1]
+            pehe_mean, pehe_std = np.mean(res[s_str][k]), np.std(res[s_str][k])
+            print('PEHE ({}):             {:.4f} +/- {:4f}'.format(method, pehe_mean, pehe_std))
 
 if __name__ == "__main__":
     main()
