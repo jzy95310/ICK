@@ -14,7 +14,7 @@ from scipy.interpolate import interp1d
 from data.TWINS.data_twins import load
 from kernels.nn import ImplicitDenseNetKernel
 from model.ick import ICK
-from model.ick_cmgp import ICK_CMGP
+from model.cmick import CMICK
 from benchmarks.cmgp_modified import CMGP
 from benchmarks.cevae_modified import *
 from benchmarks.ccn import cn_g, weights_init
@@ -196,7 +196,7 @@ def build_cmnn_ensemble(input_dim, load_weights=False):
                 'f21': f21.kernels[0].state_dict(), 'f22': f22.kernels[0].state_dict(), 'f23': f23.kernels[0].state_dict()
             }
             ensemble_weights['model_'+str(i+1)] = model_weights
-        baselearner = ICK_CMGP(
+        baselearner = CMICK(
             control_components=[f11,f21], treatment_components=[f12,f22], shared_components=[f13,f23],
             control_coeffs=[alpha11,alpha21], treatment_coeffs=[alpha12,alpha22], shared_coeffs=[alpha13,alpha23],
             coeff_trainable=True, output_binary=True
