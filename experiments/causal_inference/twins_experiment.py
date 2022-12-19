@@ -209,7 +209,8 @@ def build_cmnn_ensemble(input_dim, load_weights=False):
 
     return ensemble
 
-def fit_and_evaluate_cmnn(ensemble, data_generators, mu_test, lr, treatment_index=1, in_sample=False):
+def fit_and_evaluate_cmnn(ensemble, data_generators_in_sample, data_generators_out_sample, mu_test_in_sample, 
+                          mu_test_out_sample, lr, treatment_index=1):
     # The index of "T_train" in "data_train" is 1
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     optim = 'sgd'
@@ -221,7 +222,7 @@ def fit_and_evaluate_cmnn(ensemble, data_generators, mu_test, lr, treatment_inde
     epochs, patience = 1000, 20
     trainer = CMICKEnsembleTrainer(
         model=ensemble,
-        data_generators=data_generators,
+        data_generators=data_generators_in_sample,
         optim=optim,
         optim_params=optim_params,
         model_save_dir=None,
@@ -231,37 +232,46 @@ def fit_and_evaluate_cmnn(ensemble, data_generators, mu_test, lr, treatment_inde
         treatment_index=treatment_index
     )
     trainer.train()
-
+    
     mean_test_pred, std_test_pred, y_test_true = trainer.predict()
-    if in_sample:
-        mu_test_pred = mean_test_pred[:,1] - mean_test_pred[:,0]
-    else:
-        mu_test_pred = mean_test_pred[range(len(mean_test_pred)//2,len(mean_test_pred)),1] - \
-                       mean_test_pred[range(len(mean_test_pred)//2),0]
-    pehe_test = np.sqrt(np.mean((mu_test_pred - mu_test) ** 2))
-    print('PEHE (CMNN):             %.4f' % (pehe_test))
+    mu_test_pred = mean_test_pred[:,1] - mean_test_pred[:,0]
+    pehe_test_in_sample = np.sqrt(np.mean((mu_test_pred - mu_test_in_sample) ** 2))
+    
+    trainer.data_generators = data_generators_out_sample
+    mean_test_pred, std_test_pred, y_test_true = trainer.predict()
+    mu_test_pred = mean_test_pred[range(len(mean_test_pred)//2,len(mean_test_pred)),1] - \
+                   mean_test_pred[range(len(mean_test_pred)//2),0]
+    pehe_test_out_sample = np.sqrt(np.mean((mu_test_pred - mu_test_out_sample) ** 2))
+    print('PEHE (CMNN, in-sample):             %.4f' % (pehe_test_in_sample))
+    print('PEHE (CMNN, out-of-sample):             %.4f' % (pehe_test_out_sample))
 
-    return pehe_test
+    return pehe_test_in_sample, pehe_test_out_sample
 
-def fit_and_evaluate_original_cmgp(data):
-    X_train, T_train, Y_train = data['X_train'], data['T_train'], data['Y_train']
-    X_test, Y_test = data['X_test_original'], data['Y_test_original']
+def fit_and_evaluate_original_cmgp(data_in_sample, data_out_sample):
+    X_train, T_train, Y_train = data_in_sample['X_train'], data_in_sample['T_train'], data_in_sample['Y_train']
+    X_test, Y_test = data_in_sample['X_test_original'], data_in_sample['Y_test_original']
     cmgp_model = CMGP(X_train, T_train, Y_train)
-    pred = cmgp_model.predict(X_test, return_var=False)
-    pehe_test = sqrt_PEHE_with_diff(Y_test, pred)
-    print('PEHE (CMGP):             %.4f' % (pehe_test))
-    return pehe_test
+    pred_in_sample = cmgp_model.predict(X_test, return_var=False)
+    pehe_test_in_sample = sqrt_PEHE_with_diff(Y_test, pred_in_sample)
+    
+    X_test, Y_test = data_out_sample['X_test_original'], data_out_sample['Y_test_original']
+    pred_out_sample = cmgp_model.predict(X_test, return_var=False)
+    pehe_test_out_sample = sqrt_PEHE_with_diff(Y_test, pred_out_sample)
+    
+    print('PEHE (CMGP, in-sample):             %.4f' % (pehe_test_in_sample))
+    print('PEHE (CMGP, out-of-sample):             %.4f' % (pehe_test_out_sample))
+    return pehe_test_in_sample, pehe_test_out_sample
 
-def fit_and_evaluate_cevae(data):
+def fit_and_evaluate_cevae(data_in_sample, data_out_sample):
     lr = 1e-4
     weight_decay = 1e-4
-    batch_size = int(data['X_train'].shape[0]/8)
+    batch_size = int(data_in_sample['X_train'].shape[0]/8)
     train_iters = 20000
     eval_iters = 200
     latent_dim = 20
     n_h = 64
-    X_train, T_train, Y_train, X_test = torch.tensor(data['X_train']).float(), torch.tensor(data['T_train']).float(), \
-                                        torch.tensor(data['Y_train']).float(), torch.tensor(data['X_test_original']).float()
+    X_train, T_train, Y_train, X_test = torch.tensor(data_in_sample['X_train']).float(), torch.tensor(data_in_sample['T_train']).float(), \
+                                        torch.tensor(data_in_sample['Y_train']).float(), torch.tensor(data_in_sample['X_test_original']).float()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     X_train = X_train.to(device)
@@ -350,7 +360,7 @@ def fit_and_evaluate_cevae(data):
         # Update step
         optimizer.step()
         
-    # Evaluation
+    # Evaluation for in-sample
     Y0_pred, Y1_pred = [], []
     t_infer = q_t_x_dist(X_test)
 
@@ -369,46 +379,93 @@ def fit_and_evaluate_cevae(data):
     # sameple from the treated and control    
     mu0_test_pred = np.mean(np.array(Y0_pred), axis=0)
     mu1_test_pred = np.mean(np.array(Y1_pred), axis=0)
-    mu_test = data['mu_test']
+    mu_test_in_sample = data_in_sample['mu_test']
+    mu_test_pred_in_sample = mu1_test_pred - mu0_test_pred
+    pehe_test_in_sample = np.sqrt(np.mean((mu_test_pred_in_sample - mu_test_in_sample) ** 2))
     
-    mu_test_pred = mu1_test_pred - mu0_test_pred
-    pehe_test = np.sqrt(np.mean((mu_test_pred - mu_test) ** 2))
-    print('PEHE (CEVAE):             %.4f' % (pehe_test))
-    
-    return pehe_test
+    # Evaluation for out-of-sample
+    X_test = torch.tensor(data_out_sample['X_test_original']).float()
+    Y0_pred, Y1_pred = [], []
+    t_infer = q_t_x_dist(X_test)
 
-def fit_and_evaluate_x_learner_rf(data):
-    X_train, T_train, Y_train, X_test = data['X_train'], data['T_train'], data['Y_train'], data['X_test_original']
+    eval_iters = 1000
+    for _ in tqdm(range(eval_iters), position=0, leave=True):
+        ttmp = t_infer.sample()
+        y_infer = q_y_xt_dist(X_test, ttmp)
+
+        xy = torch.cat((X_test, y_infer.sample()), 1)
+        z_infer = q_z_tyx_dist(xy=xy, t=ttmp).sample()
+        y0 = p_y_zt_dist(z_infer, torch.zeros(z_infer.shape[0],1).to(device)).sample()
+        y1 = p_y_zt_dist(z_infer, torch.ones(z_infer.shape[0],1).to(device)).sample()
+        Y0_pred.append(y0.detach().cpu().numpy().ravel())
+        Y1_pred.append(y1.detach().cpu().numpy().ravel())
+
+    # sameple from the treated and control    
+    mu0_test_pred = np.mean(np.array(Y0_pred), axis=0)
+    mu1_test_pred = np.mean(np.array(Y1_pred), axis=0)
+    mu_test_out_sample = data_out_sample['mu_test']
+    mu_test_pred_out_sample = mu1_test_pred - mu0_test_pred
+    pehe_test_out_sample = np.sqrt(np.mean((mu_test_pred_out_sample - mu_test_out_sample) ** 2))
+    
+    print('PEHE (CEVAE, in-sample):             %.4f' % (pehe_test_in_sample))
+    print('PEHE (CEVAE, out-of-sample):             %.4f' % (pehe_test_out_sample))
+    return pehe_test_in_sample, pehe_test_out_sample
+
+def fit_and_evaluate_x_learner_rf(data_in_sample, data_out_sample):
+    X_train, T_train, Y_train, X_test = data_in_sample['X_train'], data_in_sample['T_train'], \
+                                        data_in_sample['Y_train'], data_in_sample['X_test_original']
     x_learner_rf = X_Learner_RF()
     x_learner_rf.fit(X_train, T_train, Y_train)
-    mu_test_pred = x_learner_rf.predict(X_test)
-    mu_test = data['mu_test']
-    pehe_test = np.sqrt(np.mean((mu_test_pred - mu_test) ** 2))
-    print('PEHE (X-learner-RF):             %.4f' % (pehe_test))
-    return pehe_test
+    mu_test_pred_in_sample = x_learner_rf.predict(X_test)
+    mu_test_in_sample = data_in_sample['mu_test']
+    pehe_test_in_sample = np.sqrt(np.mean((mu_test_pred_in_sample - mu_test_in_sample) ** 2))
+    
+    X_test = data_out_sample['X_test_original']
+    mu_test_pred_out_sample = x_learner_rf.predict(X_test)
+    mu_test_out_sample = data_out_sample['mu_test']
+    pehe_test_out_sample = np.sqrt(np.mean((mu_test_pred_out_sample - mu_test_out_sample) ** 2))
+    
+    print('PEHE (X-learner-RF, in-sample):             %.4f' % (pehe_test_in_sample))
+    print('PEHE (X-learner-RF, out-of-sample):             %.4f' % (pehe_test_out_sample))
+    return pehe_test_in_sample, pehe_test_out_sample
 
-def fit_and_evaluate_x_learner_bart(data):
-    X_train, T_train, Y_train, X_test = data['X_train'], data['T_train'], data['Y_train'], data['X_test_original']
+def fit_and_evaluate_x_learner_bart(data_in_sample, data_out_sample):
+    X_train, T_train, Y_train, X_test = data_in_sample['X_train'], data_in_sample['T_train'], \
+                                        data_in_sample['Y_train'], data_in_sample['X_test_original']
     x_learner_bart = X_Learner_BART(n_trees=20)
     x_learner_bart.fit(X_train, T_train, Y_train)
-    mu_test_pred = x_learner_bart.predict(X_test)
-    mu_test = data['mu_test']
-    pehe_test = np.sqrt(np.mean((mu_test_pred - mu_test) ** 2))
-    print('PEHE (X-learner-BART):             %.4f' % (pehe_test))
-    return pehe_test
+    mu_test_pred_in_sample = x_learner_bart.predict(X_test)
+    mu_test_in_sample = data_in_sample['mu_test']
+    pehe_test_in_sample = np.sqrt(np.mean((mu_test_pred_in_sample - mu_test_in_sample) ** 2))
+    
+    X_test = data_out_sample['X_test_original']
+    mu_test_pred_out_sample = x_learner_bart.predict(X_test)
+    mu_test_out_sample = data_out_sample['mu_test']
+    pehe_test_out_sample = np.sqrt(np.mean((mu_test_pred_out_sample - mu_test_out_sample) ** 2))
+    
+    print('PEHE (X-learner-BART, in-sample):             %.4f' % (pehe_test_in_sample))
+    print('PEHE (X-learner-BART, out-of-sample):             %.4f' % (pehe_test_out_sample))
+    return pehe_test_in_sample, pehe_test_out_sample
 
-def fit_and_evaluate_ganite(data):
-    X_train, T_train, Y_train, X_test = data['X_train'], data['T_train'], data['Y_train'],data['X_test_original']
-    Y_test = data['Y_test_original']
+def fit_and_evaluate_ganite(data_in_sample, data_out_sample):
+    X_train, T_train, Y_train, X_test = data_in_sample['X_train'], data_in_sample['T_train'], \
+                                        data_in_sample['Y_train'], data_in_sample['X_test_original']
+    Y_test = data_in_sample['Y_test_original']
     model = Ganite(X_train, T_train, Y_train, num_iterations=500)
-    pred = model(X_test).cpu().detach().numpy()
-    pehe_test = sqrt_PEHE_with_diff(Y_test, pred)
-    print('PEHE (GANITE):             %.4f' % (pehe_test))
+    pred_in_sample = model(X_test).cpu().detach().numpy()
+    pehe_test_in_sample = sqrt_PEHE_with_diff(Y_test, pred_in_sample)
+    
+    X_test, Y_test = data_out_sample['X_test_original'], data_out_sample['Y_test_original']
+    pred_out_sample = model(X_test).cpu().detach().numpy()
+    pehe_test_out_sample = sqrt_PEHE_with_diff(Y_test, pred_out_sample)
+    
+    print('PEHE (GANITE, in-sample):             %.4f' % (pehe_test_in_sample))
+    print('PEHE (GANITE, out-of-sample):             %.4f' % (pehe_test_out_sample))
+    return pehe_test_in_sample, pehe_test_out_sample
 
-    return pehe_test
-
-def fit_and_evaluate_cfrnet(input_dim, phi_depth, phi_width, h_depth, h_width, data_generators, 
-                            mu_test, lr, alpha, metric='W2', treatment_index=1, load_weights=False, in_sample=False):
+def fit_and_evaluate_cfrnet(input_dim, phi_depth, phi_width, h_depth, h_width, data_generators_in_sample, 
+                            data_generators_out_sample, mu_test_in_sample, mu_test_out_sample, lr, alpha, 
+                            metric='W2', treatment_index=1, load_weights=False):
     cfrnet = DenseCFRNet(input_dim, phi_depth, phi_width, h_depth, h_width, activation='tanh')
     if load_weights:
         cfrnet.load_state_dict(torch.load('./checkpoints/cfrnet_twins.pt'))
@@ -426,7 +483,7 @@ def fit_and_evaluate_cfrnet(input_dim, phi_depth, phi_width, h_depth, h_width, d
     epochs, patience = 1000, 20
     trainer = CFRNetTrainer(
         model=cfrnet,
-        data_generators=data_generators,
+        data_generators=data_generators_in_sample,
         optim=optim,
         optim_params=optim_params, 
         model_save_dir=None,
@@ -439,50 +496,68 @@ def fit_and_evaluate_cfrnet(input_dim, phi_depth, phi_width, h_depth, h_width, d
     trainer.train()
     
     y_test_pred, y_test_true = trainer.predict()
-    if in_sample:
-        mu_test_pred = y_test_pred[:,1] - y_test_pred[:,0]
-    else:
-        mu_test_pred = y_test_pred[range(len(y_test_pred)//2,len(y_test_pred)),1] - \
-                       y_test_pred[range(len(y_test_pred)//2),0]
-    pehe_test = np.sqrt(np.mean((mu_test_pred - mu_test) ** 2))
-    print('PEHE (CFRNet):             %.4f' % (pehe_test))
+    mu_test_pred = y_test_pred[:,1] - y_test_pred[:,0]
+    pehe_test_in_sample = np.sqrt(np.mean((mu_test_pred - mu_test_in_sample) ** 2))
     
-    return pehe_test
+    trainer.data_generators = data_generators_out_sample
+    y_test_pred, y_test_true = trainer.predict()
+    mu_test_pred = y_test_pred[range(len(y_test_pred)//2,len(y_test_pred)),1] - \
+                   y_test_pred[range(len(y_test_pred)//2),0]
+    pehe_test_out_sample = np.sqrt(np.mean((mu_test_pred - mu_test_out_sample) ** 2))
+    
+    print('PEHE (CFRNet, in-sample):             %.4f' % (pehe_test_in_sample))
+    print('PEHE (CFRNet, out-of-sample):             %.4f' % (pehe_test_out_sample))
+    return pehe_test_in_sample, pehe_test_out_sample
 
 def main():
     train_ratio, test_ratio, n_iters = 0.56, 0.20, 10
     res = {'in-sample': defaultdict(list), 'out-sample': defaultdict(list)}
-    in_sample = [True, False]
-    for s in in_sample:
-        print("Setting: {}".format("In-sample" if s else "Out-of-sample"))
-        s_str = 'in-sample' if s else 'out-sample'
-        for i in trange(n_iters):
-            print("Iteration {}".format(i+1))
-            data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_seed=i, in_sample=s)
-            input_dim = data['X_train'].shape[1]
-            # Make sure the ICK-CMGP ensemble has the same starting point for each experimental run
-            ensemble = build_cmnn_ensemble(input_dim, load_weights=(i!=0))
-            sqrt_pehe_cmnn = fit_and_evaluate_cmnn(
-                ensemble, data_generators, data['mu_test'], lr=2e-3, in_sample=s)
-            res[s_str]['sqrt_pehe_cmnn'].append(sqrt_pehe_cmnn)
-            sqrt_pehe_cmgp = fit_and_evaluate_original_cmgp(data)
-            res[s_str]['sqrt_pehe_cmgp'].append(sqrt_pehe_cmgp)
-            sqrt_pehe_cevae = fit_and_evaluate_cevae(data)
-            res[s_str]['sqrt_pehe_cevae'].append(sqrt_pehe_cevae)
-            sqrt_pehe_ganite = fit_and_evaluate_ganite(data)
-            res[s_str]['sqrt_pehe_ganite'].append(sqrt_pehe_ganite)
-            sqrt_pehe_x_learner_rf = fit_and_evaluate_x_learner_rf(data)
-            res[s_str]['sqrt_pehe_x_learner_rf'].append(sqrt_pehe_x_learner_rf)
-            sqrt_pehe_x_learner_bart = fit_and_evaluate_x_learner_bart(data)
-            res[s_str]['sqrt_pehe_x_learner_bart'].append(sqrt_pehe_x_learner_bart)
-            sqrt_pehe_cfrnet_wass = fit_and_evaluate_cfrnet(
-                input_dim, 2, 512, 2, 512, data_generators, data['mu_test'], lr=1e-4, 
-                alpha=1, metric='W2', treatment_index=1, load_weights=(i!=0), in_sample=s)
-            res[s_str]['sqrt_pehe_cfrnet_wass'].append(sqrt_pehe_cfrnet_wass)
-            sqrt_pehe_cfrnet_mmd = fit_and_evaluate_cfrnet(
-                input_dim, 2, 512, 2, 512, data_generators, data['mu_test'], lr=1e-4, 
-                alpha=1, metric='MMD', treatment_index=1, load_weights=(i!=0), in_sample=s)
-            res[s_str]['sqrt_pehe_cfrnet_mmd'].append(sqrt_pehe_cfrnet_mmd)
+    for i in trange(n_iters):
+        print("Iteration {}".format(i+1))
+        data_generators_in_sample, data_in_sample = load_and_preprocess_data(
+            train_ratio, test_ratio, random_seed=i, in_sample=True)
+        data_generators_out_sample, data_out_sample = load_and_preprocess_data(
+            train_ratio, test_ratio, random_seed=i, in_sample=False)
+        input_dim = data_in_sample['X_train'].shape[1]
+        # Make sure the ICK-CMGP ensemble has the same starting point for each experimental run
+        ensemble = build_cmnn_ensemble(input_dim, load_weights=(i!=0))
+        sqrt_pehe_cmnn_in_sample, sqrt_pehe_cmnn_out_sample = fit_and_evaluate_cmnn(
+            ensemble, data_generators_in_sample, data_generators_out_sample, data_in_sample['mu_test'], 
+            data_out_sample['mu_test'], lr=2e-3)
+        res['in-sample']['sqrt_pehe_cmnn'].append(sqrt_pehe_cmnn_in_sample)
+        res['out-sample']['sqrt_pehe_cmnn'].append(sqrt_pehe_cmnn_out_sample)
+        sqrt_pehe_cmgp_in_sample, sqrt_pehe_cmgp_out_sample = fit_and_evaluate_original_cmgp(
+            data_in_sample, data_out_sample)
+        res['in-sample']['sqrt_pehe_cmgp'].append(sqrt_pehe_cmgp_in_sample)
+        res['out-sample']['sqrt_pehe_cmgp'].append(sqrt_pehe_cmgp_out_sample)
+        sqrt_pehe_cevae_in_sample, sqrt_pehe_cevae_out_sample = fit_and_evaluate_cevae(
+            data_in_sample, data_out_sample)
+        res['in-sample']['sqrt_pehe_cevae'].append(sqrt_pehe_cevae_in_sample)
+        res['out-sample']['sqrt_pehe_cevae'].append(sqrt_pehe_cevae_out_sample)
+        sqrt_pehe_ganite_in_sample,sqrt_pehe_ganite_out_sample  = fit_and_evaluate_ganite(
+            data_in_sample, data_out_sample)
+        res['in-sample']['sqrt_pehe_ganite'].append(sqrt_pehe_ganite_in_sample)
+        res['out-sample']['sqrt_pehe_ganite'].append(sqrt_pehe_ganite_out_sample)
+        sqrt_pehe_x_learner_rf_in_sample, sqrt_pehe_x_learner_rf_out_sample = fit_and_evaluate_x_learner_rf(
+            data_in_sample, data_out_sample)
+        res['in-sample']['sqrt_pehe_x_learner_rf'].append(sqrt_pehe_x_learner_rf_in_sample)
+        res['out-sample']['sqrt_pehe_x_learner_rf'].append(sqrt_pehe_x_learner_rf_out_sample)
+        sqrt_pehe_x_learner_bart_in_sample, sqrt_pehe_x_learner_bart_out_sample = fit_and_evaluate_x_learner_bart(
+            data_in_sample, data_out_sample)
+        res['in-sample']['sqrt_pehe_x_learner_bart'].append(sqrt_pehe_x_learner_bart_in_sample)
+        res['out-sample']['sqrt_pehe_x_learner_bart'].append(sqrt_pehe_x_learner_bart_out_sample)
+        sqrt_pehe_cfrnet_wass_in_sample, sqrt_pehe_cfrnet_wass_out_sample = fit_and_evaluate_cfrnet(
+            input_dim, 2, 512, 2, 512, data_generators_in_sample, data_generators_out_sample, 
+            data_in_sample['mu_test'], data_out_sample['mu_test'], lr=1e-4, alpha=1, metric='W2', 
+            treatment_index=1, load_weights=(i!=0))
+        res['in-sample']['sqrt_pehe_cfrnet_wass'].append(sqrt_pehe_cfrnet_wass_in_sample)
+        res['out-sample']['sqrt_pehe_cfrnet_wass'].append(sqrt_pehe_cfrnet_wass_out_sample)
+        sqrt_pehe_cfrnet_mmd_in_sample, sqrt_pehe_cfrnet_mmd_out_sample = fit_and_evaluate_cfrnet(
+            input_dim, 2, 512, 2, 512, data_generators_in_sample, data_generators_out_sample, 
+            data_in_sample['mu_test'], data_out_sample['mu_test'], lr=1e-4, alpha=1, metric='MMD', 
+            treatment_index=1, load_weights=(i!=0))
+        res['in-sample']['sqrt_pehe_cfrnet_mmd'].append(sqrt_pehe_cfrnet_mmd_in_sample)
+        res['out-sample']['sqrt_pehe_cfrnet_mmd'].append(sqrt_pehe_cfrnet_mmd_out_sample)
     try:
         os.makedirs('./results')
     except FileExistsError:
@@ -490,7 +565,7 @@ def main():
     with open('./results/twins_results.pkl', 'wb') as fp:
         pkl.dump(res, fp)
     
-    for s in in_sample:
+    for s in [True, False]:
         print("Setting: {}".format("In-sample" if s else "Out-of-sample"))
         s_str = 'in-sample' if s else 'out-sample'
         for k in res[s_str].keys():
