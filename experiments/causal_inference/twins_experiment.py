@@ -384,7 +384,7 @@ def fit_and_evaluate_cevae(data_in_sample, data_out_sample):
     pehe_test_in_sample = np.sqrt(np.mean((mu_test_pred_in_sample - mu_test_in_sample) ** 2))
     
     # Evaluation for out-of-sample
-    X_test = torch.tensor(data_out_sample['X_test_original']).float()
+    X_test = torch.tensor(data_out_sample['X_test_original']).float().to(device)
     Y0_pred, Y1_pred = [], []
     t_infer = q_t_x_dist(X_test)
 
