@@ -10,6 +10,7 @@ from typing import Dict, List, Tuple
 from utils.train import Trainer, EnsembleTrainer
 from utils.losses import CFRLoss
 from utils.constants import *
+from utils.losses import *
 
 class JointNNTrainer(Trainer):
     """
@@ -352,6 +353,98 @@ class CFRNetTrainer(Trainer):
                 y_pred, target = y_pred.float(), target.reshape(-1).float()
                 y_test_pred = torch.cat((y_test_pred, y_pred), dim=0)
                 y_test_true = torch.cat((y_test_true, target), dim=0)
+        return y_test_pred.detach().cpu().numpy(), y_test_true.detach().cpu().numpy()
+
+class DCNTrainer(Trainer):
+    """
+    Trainer class for Deep Counterfactual Network (w/o propensity dropout) proposed by Alaa et al. (2017)
+
+    Arguments
+    --------------
+    treatment_index: int, the index of the group variable (control or treatment) in the input data
+    """
+    def __init__(self, model: torch.nn.Module, data_generators: Dict, optim: str, optim_params: Dict, lr_scheduler: torch.optim.lr_scheduler._LRScheduler = None, 
+                 model_save_dir: str = None, model_name: str = 'model.pt', loss_fn: torch.nn.modules.loss._Loss = FactualMSELoss(), 
+                 device: torch.device = torch.device('cpu'), validation: bool = True, epochs: int = 100, patience: int = 10, verbose: int = 0, 
+                 treatment_index: int = 0, logger: logging.Logger = logging.getLogger("Trainer")) -> None:
+        self.treatment_index = treatment_index
+        super(DCNTrainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, model_save_dir, model_name, 
+                                           loss_fn, device, validation, epochs, patience, verbose, logger)
+        self._validate_inputs()
+    
+    def _validate_inputs(self) -> None:
+        assert self.treatment_index >= 0, "Treatment index must be a non-negative integer."
+        assert isinstance(self.loss_fn, (FactualMSELoss, FactualCrossEntropyLoss)), "Loss function must be either FactualMSELoss or FactualCrossEntropyLoss."
+        super(DCNTrainer, self)._validate_inputs()
+    
+    def _train_step(self) -> float:
+        """
+        Perform a single training step for a baselearner in the CMICK model
+        """
+        y_train_pred = torch.empty(0).to(self.device)
+        y_train_true = torch.empty(0).to(self.device)
+        groups = torch.empty(0).to(self.device)
+        self.model.to(self.device)
+        self.model.train()
+        for step, batch in enumerate(self.data_generators[TRAIN]):
+            data, target = self._assign_device_to_data(batch[0], batch[1])
+            data, group = data[:self.treatment_index] + data[self.treatment_index+1:], torch.squeeze(data[self.treatment_index])
+            data = data[0] if len(data) == 1 else data
+            # Zero the gradients
+            self.optimizer.zero_grad()
+            # Forward pass
+            output = self.model(data).float().to(self.device)
+            loss = self.loss_fn(output, target, group)
+            # Backward pass
+            loss.backward()
+            self.optimizer.step()
+            # Record the predictions
+            y_train_pred = torch.cat((y_train_pred, output), dim=0)
+            y_train_true = torch.cat((y_train_true, target), dim=0)
+            groups = torch.cat((groups, group), dim=0)
+        train_loss = self.loss_fn(y_train_pred, y_train_true, groups).item()
+        return train_loss, step
+    
+    def validate(self) -> float:
+        """
+        Evaluate the CMICK model on the validation data
+        """
+        y_val_pred = torch.empty(0).to(self.device)
+        y_val_true = torch.empty(0).to(self.device)
+        groups = torch.empty(0).to(self.device)
+        self.model.eval()
+
+        key = TRAIN if not self.validation else (VAL if self.data_generators[VAL] is not None else TEST)
+        with torch.no_grad():
+            for batch in self.data_generators[key]:
+                data, target = self._assign_device_to_data(batch[0], batch[1])
+                data, group = data[:self.treatment_index] + data[self.treatment_index+1:], torch.squeeze(data[self.treatment_index])
+                data = data[0] if len(data) == 1 else data
+                output = self.model(data).float().to(self.device)
+                y_val_pred = torch.cat((y_val_pred, output), dim=0)
+                y_val_true = torch.cat((y_val_true, target), dim=0)
+                groups = torch.cat((groups, group), dim=0)
+        val_loss = self.loss_fn(y_val_pred, y_val_true, groups).item()
+        return val_loss
+    
+    def predict(self) -> Tuple:
+        """
+        Evaluate the CMICK model on the test data
+        """
+        y_test_pred = torch.empty(0).to(self.device)
+        y_test_true = torch.empty(0).to(self.device)
+        groups = torch.empty(0).to(self.device)
+        self.model.eval()
+
+        with torch.no_grad():
+            for batch in self.data_generators[TEST]:
+                data, target = self._assign_device_to_data(batch[0], batch[1])
+                data, group = data[:self.treatment_index] + data[self.treatment_index+1:], torch.squeeze(data[self.treatment_index])
+                data = data[0] if len(data) == 1 else data
+                output = self.model.predict(data).float().to(self.device)
+                y_test_pred = torch.cat((y_test_pred, output), dim=0)
+                y_test_true = torch.cat((y_test_true, target), dim=0)
+                groups = torch.cat((groups, group), dim=0)
         return y_test_pred.detach().cpu().numpy(), y_test_true.detach().cpu().numpy()
 
 # ########################################################################################

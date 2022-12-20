@@ -29,7 +29,7 @@ class DenseCFRNet(nn.Module):
         self.phi = ImplicitDenseNetKernel(
             input_dim=input_dim, 
             latent_feature_dim=phi_width, 
-            num_blocks=phi_depth, 
+            num_blocks=phi_depth-1, 
             num_layers_per_block=1,
             num_units=phi_width,
             activation=activation, 
@@ -41,7 +41,7 @@ class DenseCFRNet(nn.Module):
                 ImplicitDenseNetKernel(
                     input_dim=phi_width, 
                     latent_feature_dim=1, 
-                    num_blocks=h_depth, 
+                    num_blocks=h_depth-1, 
                     num_layers_per_block=1,
                     num_units=h_width,
                     activation=activation, 

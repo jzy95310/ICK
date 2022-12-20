@@ -501,7 +501,7 @@ class EnsembleTrainer(BaseTrainer):
             if trigger_times < self.patience:
                 self.logger.info("Training completed.")
     
-    def validate(self) -> torch.Tensor:
+    def validate(self) -> float:
         """
         Evaluate the ICK ensemble model on the validation data
         """
@@ -661,7 +661,7 @@ class CMICKEnsembleTrainer(EnsembleTrainer):
         if trigger_times < self.patience:
             self.logger.info("Training completed.")
     
-    def validate(self) -> torch.Tensor:
+    def validate(self) -> float:
         """
         Evaluate the CMICK ensemble on the validation data
         """

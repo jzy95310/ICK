@@ -15,7 +15,7 @@ class FactualMSELoss(_Loss):
     Arguments
     --------------
     regularize_var: bool, whether to regularize the variance of the COUNTERFACTUAL predicted outcomes, only supported for 
-        ICK-CMGP ensemble model, default to False
+        CMICK ensemble model, default to False
     """
     __constants__ = ['reduction']
 
@@ -38,9 +38,14 @@ class FactualMSELoss(_Loss):
         --------------
         loss: torch.Tensor, a scalar tensor that contains the mean squared error between the factual outcomes and the predicted outcomes
         """
-        factual_err = F.mse_loss(torch.cat((torch.mean(prediction,dim=0)[group==0,0], torch.mean(prediction,dim=0)[group==1,1])), 
-                                 torch.cat((target[group==0], target[group==1])), reduction=self.reduction)
-        counterfactual_var = torch.cat((torch.var(prediction,dim=0)[group==1,0], torch.var(prediction,dim=0)[group==0,1]))
+        if len(prediction.shape) >= 3:
+            factual_err = F.mse_loss(torch.cat((torch.mean(prediction,dim=0)[group==0,0], torch.mean(prediction,dim=0)[group==1,1])), 
+                                    torch.cat((target[group==0], target[group==1])), reduction=self.reduction)
+            counterfactual_var = torch.cat((torch.var(prediction,dim=0)[group==1,0], torch.var(prediction,dim=0)[group==0,1]))
+        else:
+            factual_err = F.mse_loss(prediction[group==0,0], target[group==0], reduction=self.reduction) + \
+                          F.mse_loss(prediction[group==1,1], target[group==1], reduction=self.reduction)
+            counterfactual_var = 0.
         if self.regularize_var:
             return factual_err + torch.mean(counterfactual_var)
         else:
@@ -54,7 +59,7 @@ class FactualCrossEntropyLoss(_WeightedLoss):
     Arguments
     --------------
     regularize_var: bool, whether to regularize the variance of the COUNTERFACTUAL predicted outcomes, only supported for 
-        ICK-CMGP ensemble model, default to False
+        CMICK ensemble model, default to False
     """
     __constants__ = ['ignore_index', 'reduction', 'label_smoothing']
 
@@ -80,10 +85,17 @@ class FactualCrossEntropyLoss(_WeightedLoss):
         --------------
         loss: torch.Tensor, a scalar tensor that contains the cross entropy between the factual outcomes and the predicted outcomes
         """
-        factual_err = F.cross_entropy(torch.cat((torch.mean(prediction,dim=0)[group==0,0], torch.mean(prediction,dim=0)[group==1,1])), 
-                                      torch.cat((target[group==0], target[group==1])), weight=self.weight, ignore_index=self.ignore_index,
-                                      reduction=self.reduction, label_smoothing=self.label_smoothing)
-        counterfactual_var = torch.cat((torch.var(prediction,dim=0)[group==1,0], torch.var(prediction,dim=0)[group==0,1]))
+        if len(prediction.shape) >= 3:
+            factual_err = F.cross_entropy(torch.cat((torch.mean(prediction,dim=0)[group==0,0], torch.mean(prediction,dim=0)[group==1,1])), 
+                                        torch.cat((target[group==0], target[group==1])), weight=self.weight, ignore_index=self.ignore_index,
+                                        reduction=self.reduction, label_smoothing=self.label_smoothing)
+            counterfactual_var = torch.cat((torch.var(prediction,dim=0)[group==1,0], torch.var(prediction,dim=0)[group==0,1]))
+        else:
+            factual_err = F.cross_entropy(prediction[group==0,0], target[group==0], weight=self.weight, ignore_index=self.ignore_index,
+                                        reduction=self.reduction, label_smoothing=self.label_smoothing) + \
+                          F.cross_entropy(prediction[group==1,1], target[group==1], weight=self.weight, ignore_index=self.ignore_index,
+                                        reduction=self.reduction, label_smoothing=self.label_smoothing)
+            counterfactual_var = 0.
         if self.regularize_var:
             return factual_err + torch.mean(counterfactual_var)
         else:
