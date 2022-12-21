@@ -2,6 +2,7 @@ import sys, os, random
 sys.path.insert(0, '../../')
 import numpy as np
 import pandas as pd
+import pickle as pkl
 import matplotlib.pyplot as plt
 from PIL import Image
 from tqdm.notebook import trange
@@ -10,9 +11,14 @@ from sklearn.preprocessing import StandardScaler
 import torch
 from torchvision.transforms import Compose, ToTensor, Resize
 from kernels.nn import ImplicitConvNet2DKernel
+from kernels.kernel_fn import linear_kernel_nys, sq_exp_kernel_nys
 from model.ick import ICK
 from model.cmick import CMICK
+from benchmarks.cfrnet import DenseCFRNet, Conv2DCFRNet
+from benchmarks.dcn_pd import DenseDCNPD, Conv2DDCNPD
+from benchmarks.train_benchmarks import CFRNetTrainer, DCNTrainer
 from utils.train import CMICKEnsembleTrainer
+from utils.losses import *
 from utils.helpers import *
 
 # To make this notebook's output stable across runs
@@ -27,7 +33,7 @@ torch.backends.cudnn.benchmark = False
 
 # 1. Load and preprocess the images and demographic infomation
 def load_and_preprocess_data(train_ratio, test_ratio, random_state, include_images=True, demo_features=None):
-    def process_img(img, resize=(224,224), mode='L'):
+    def process_img(img, resize=(200,200), mode='L'):
         # Convert the image to black-white and resize
         assert isinstance(resize, tuple) and len(resize) == 2
         transforms = Compose([ToTensor(), Resize(resize)])
@@ -73,14 +79,15 @@ def load_and_preprocess_data(train_ratio, test_ratio, random_state, include_imag
         data_train.append(D_train)
         data_val.append(D_val)
         data_test.append(D_test)
-    data = {'X_train': X_train, 'T_train': T_train, 'D_train': D_train, 'Y_train': Y_train, 'Y0_train': Y0_train, 'Y1_train': Y1_train, 
-            'X_val': X_val, 'T_val': T_val, 'D_val': D_val, 'Y_val': Y_val, 'Y0_val': Y0_val, 'Y1_val': Y1_val, 
-            'X_test': X_test, 'T_test': T_test, 'D_test': D_test, 'Y_test': Y_test, 'Y0_test': Y0_test, 'Y1_test': Y1_test}
+    data = {'X_train': X_train, 'T_train': T_train, 'D_train': D_train, 'Y_train': Y_train.squeeze(), 'Y0_train': Y0_train.squeeze(), 'Y1_train': Y1_train.squeeze(), 
+            'X_val': X_val, 'T_val': T_val, 'D_val': D_val, 'Y_val': Y_val.squeeze(), 'Y0_val': Y0_val.squeeze(), 'Y1_val': Y1_val.squeeze(), 
+            'X_test': X_test, 'T_test': T_test, 'D_test': D_test, 'Y_test': Y_test.squeeze(), 'Y0_test': Y0_test.squeeze(), 'Y1_test': Y1_test.squeeze()}
     data_generators = create_generators_from_data(
         x_train=data_train, y_train=Y_train, 
         x_val=data_val, y_val=Y_val,
         x_test=data_test, y_test=Y_test, 
-        train_batch_size=16, val_batch_size=16, test_batch_size=16
+        train_batch_size=12, val_batch_size=12, test_batch_size=12, 
+        drop_last=False
     )
     del X_train, X_val, X_test, D_train, D_val, D_test, T_train, T_val, T_test, Y_train, Y_val, Y_test
     return data_generators, data
@@ -152,7 +159,7 @@ def fit_evaluate_cmnn_ensemble_image_only(input_width, input_height, in_channels
         'momentum': 0.99,
         'weight_decay': 1e-4
     }
-    epochs, patience = 1000, 10
+    epochs, patience = 1000, 15
     trainer = CMICKEnsembleTrainer(
         model=ensemble,
         data_generators=data_generators,
@@ -235,7 +242,7 @@ def fit_evaluate_cmnn_ensemble_demo_only(input_dim, data_generators, data, lr, t
         'momentum': 0.99,
         'weight_decay': 1e-4
     }
-    epochs, patience = 1000, 10
+    epochs, patience = 1000, 15
     trainer = CMICKEnsembleTrainer(
         model=ensemble,
         data_generators=data_generators,
@@ -346,7 +353,7 @@ def fit_evaluate_cmnn_ensemble_image_demo(input_width, input_height, in_channels
         'momentum': 0.99,
         'weight_decay': 1e-4
     }
-    epochs, patience = 1000, 10
+    epochs, patience = 1000, 15
     trainer = CMICKEnsembleTrainer(
         model=ensemble,
         data_generators=data_generators,
@@ -461,7 +468,7 @@ def fit_evaluate_cmick_ensemble_image_demo(input_width, input_height, in_channel
         'momentum': 0.99,
         'weight_decay': 1e-4
     }
-    epochs, patience = 1000, 10
+    epochs, patience = 1000, 15
     trainer = CMICKEnsembleTrainer(
         model=ensemble,
         data_generators=data_generators,
@@ -483,7 +490,8 @@ def fit_evaluate_cmick_ensemble_image_demo(input_width, input_height, in_channel
     return pehe_test
 
 
-# 4. Benchmark 1: CFRNet (with image only)
+# 4. Benchmark 1: CFRNet
+# 4.1 Image only
 def fit_and_evaluate_cfrnet(input_width, input_height, in_channels, phi_depth, phi_width, h_depth, h_width, 
                             data_generators, data, lr, alpha, metric='W2', treatment_index=0):
     cfrnet = Conv2DCFRNet(input_width, input_height, in_channels, phi_depth, phi_width, h_depth, h_width)
@@ -494,7 +502,7 @@ def fit_and_evaluate_cfrnet(input_width, input_height, in_channels, phi_depth, p
         'momentum': 0.99,
         'weight_decay': 1e-4
     }
-    epochs, patience = 1000, 10
+    epochs, patience = 1000, 15
     trainer = CFRNetTrainer(
         model=cfrnet,
         data_generators=data_generators,
@@ -517,7 +525,42 @@ def fit_and_evaluate_cfrnet(input_width, input_height, in_channels, phi_depth, p
     return pehe_test
 
 
+# 4.2 Demographic information only
+def fit_and_evaluate_cfrnet_demo_only(input_dim, phi_depth, phi_width, h_depth, h_width, data_generators, 
+                                      data, lr, alpha, metric='W2', treatment_index=0):
+    cfrnet = DenseCFRNet(input_dim, phi_depth, phi_width, h_depth, h_width)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    optim = 'sgd'
+    optim_params = {
+        'lr': lr, 
+        'momentum': 0.99,
+        'weight_decay': 1e-4
+    }
+    epochs, patience = 1000, 15
+    trainer = CFRNetTrainer(
+        model=cfrnet,
+        data_generators=data_generators,
+        optim=optim,
+        optim_params=optim_params, 
+        model_save_dir=None,
+        loss_fn=CFRLoss(alpha=alpha,metric=metric),
+        device=device,
+        epochs=epochs,
+        patience=patience, 
+        treatment_index=treatment_index
+    )
+    trainer.train()
+    
+    y_test_pred, y_test_true = trainer.predict()
+    y0_test, y1_test = data['Y0_test'], data['Y1_test']
+    pehe_test = np.sqrt(np.mean(((y_test_pred[:,1] - y_test_pred[:,0]) - (y1_test - y0_test)) ** 2))
+    print('PEHE (CFRNet-Wass with demo only):             %.4f' % (pehe_test))
+    
+    return pehe_test
+
+
 # 5. Benchmark 2: DCN-PD
+# 5.1 Image only
 def fit_and_evaluate_dcn_pd(input_width, input_height, in_channels, shared_conv_blocks, shared_channels, 
                            idiosyncratic_depth, idiosyncratic_width, data_generators, data, lr, treatment_index=0):
     dcn_pd = Conv2DDCNPD(
@@ -536,7 +579,7 @@ def fit_and_evaluate_dcn_pd(input_width, input_height, in_channels, shared_conv_
         'momentum': 0.99,
         'weight_decay': 1e-4
     }
-    epochs, patience = 1000, 10
+    epochs, patience = 1000, 15
     trainer = DCNTrainer(
         model=dcn_pd,
         data_generators=data_generators,
@@ -554,6 +597,45 @@ def fit_and_evaluate_dcn_pd(input_width, input_height, in_channels, shared_conv_
     y0_test, y1_test = data['Y0_test'], data['Y1_test']
     pehe_test = np.sqrt(np.mean(((y_test_pred[:,1] - y_test_pred[:,0]) - (y1_test - y0_test)) ** 2))
     print('PEHE (DCN-PD):             %.4f' % (pehe_test))
+    
+    return pehe_test
+
+
+# 5.2 Demographic information only
+def fit_and_evaluate_dcn_pd_demo_only(input_dim, shared_depth, shared_width, idiosyncratic_depth, idiosyncratic_width,
+                                      data_generators, data, lr, treatment_index=0):
+    dcn_pd = DenseDCNPD(
+        input_dim=input_dim, 
+        shared_depth=shared_depth, 
+        shared_width=shared_width, 
+        idiosyncratic_depth=idiosyncratic_depth, 
+        idiosyncratic_width=idiosyncratic_width
+    )
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    optim = 'sgd'
+    optim_params = {
+        'lr': lr, 
+        'momentum': 0.99,
+        'weight_decay': 1e-4
+    }
+    epochs, patience = 1000, 15
+    trainer = DCNTrainer(
+        model=dcn_pd,
+        data_generators=data_generators,
+        optim=optim,
+        optim_params=optim_params, 
+        model_save_dir=None,
+        device=device,
+        epochs=epochs,
+        patience=patience, 
+        treatment_index=treatment_index
+    )
+    trainer.train()
+    
+    y_test_pred, y_test_true = trainer.predict()
+    y0_test, y1_test = data['Y0_test'], data['Y1_test']
+    pehe_test = np.sqrt(np.mean(((y_test_pred[:,1] - y_test_pred[:,0]) - (y1_test - y0_test)) ** 2))
+    print('PEHE (DCN-PD with demo only):             %.4f' % (pehe_test))
     
     return pehe_test
 
@@ -583,23 +665,34 @@ def main():
                                                                         demo_range, data_generators, data, lr=1e-4)
     
     # Benchmarks
+    # With image only
     data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, demo_features=[])
     input_width, input_height, in_channels = data['X_train'].shape[2], data['X_train'].shape[3], data['X_train'].shape[1]
-    sqrt_pehe_cfrnet_wass = fit_and_evaluate_cfrnet(
+    sqrt_pehe_cfrnet_wass_image_only = fit_and_evaluate_cfrnet_image_only(
         input_width, input_height, in_channels, 2, 512, 2, 512, data_generators, data, lr=1e-5,
         alpha=1e-2, metric='W2'
     )
-    sqrt_pehe_dcn_pd = fit_and_evaluate_dcn_pd(
+    sqrt_pehe_dcn_pd_image_only = fit_and_evaluate_dcn_pd_image_only(
         input_width, input_height, in_channels, 2, 64, 2, 512, data_generators, data, lr=1e-5
+    )
+    # With demographic information only
+    data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, include_images=False)
+    demo_input_dim = data['D_train'].shape[1]
+    sqrt_pehe_cfrnet_wass_demo_only = fit_and_evaluate_cfrnet_demo_only(
+        demo_input_dim, 2, 512, 2, 512, data_generators, data, lr=1e-5, alpha=1e-2, metric='W2'
+    )
+    sqrt_pehe_dcn_pd_demo_only = fit_and_evaluate_dcn_pd_demo_only(
+        demo_input_dim, 2, 512, 2, 512, data_generators, data, lr=1e-5
     )
     
     print('PEHE (CMNN with image only):             %.4f' % (sqrt_pehe_cmnn_image_only))
     print('PEHE (CMNN with demographic info only):             %.4f' % (sqrt_pehe_cmnn_demo_only))
     print('PEHE (CMNN with image and demographic info):             %.4f' % (sqrt_pehe_cmnn_image_demo))
     print('PEHE (CMICK with image and demographic info):             %.4f' % (sqrt_pehe_cmick_image_demo))
-    print('PEHE (CFRNet):             %.4f' % (sqrt_pehe_cfrnet_wass))
-    print('PEHE (DCN-PD):             %.4f' % (sqrt_pehe_dcn_pd))
+    print('PEHE (CFRNet-Wass with image only):             %.4f' % (sqrt_pehe_cfrnet_wass_image_only))
+    print('PEHE (CFRNet-Wass with demo only):             %.4f' % (sqrt_pehe_cfrnet_wass_demo_only))
+    print('PEHE (DCN-PD with image only):             %.4f' % (sqrt_pehe_dcn_pd_image_only))
+    print('PEHE (DCN-PD with demo only):             %.4f' % (sqrt_pehe_dcn_pd_demo_only))
 
 if __name__ == "__main__":
     main()
-

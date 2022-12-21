@@ -297,6 +297,8 @@ class CFRNetTrainer(Trainer):
         for step, batch in enumerate(self.data_generators[TRAIN]):
             data, target = self._assign_device_to_data(batch[0], batch[1])
             data, group = data[:self.treatment_index] + data[self.treatment_index+1:], data[self.treatment_index]
+            if all(group == 0) or all(group == 1):
+                continue
             data = data[0] if len(data) == 1 else data
             # Zero the gradients
             self.optimizer.zero_grad()
@@ -328,6 +330,8 @@ class CFRNetTrainer(Trainer):
             for batch in self.data_generators[key]:
                 data, target = self._assign_device_to_data(batch[0], batch[1])
                 data, group = data[:self.treatment_index] + data[self.treatment_index+1:], data[self.treatment_index]
+                if all(group == 0) or all(group == 1):
+                    continue
                 data = data[0] if len(data) == 1 else data
                 y_pred, phi_out = self.model(data, group)
                 y_pred, phi_out = y_pred.reshape(-1).float(), phi_out.float()
