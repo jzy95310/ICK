@@ -492,8 +492,8 @@ def fit_evaluate_cmick_ensemble_image_demo(input_width, input_height, in_channel
 
 # 4. Benchmark 1: CFRNet
 # 4.1 Image only
-def fit_and_evaluate_cfrnet(input_width, input_height, in_channels, phi_depth, phi_width, h_depth, h_width, 
-                            data_generators, data, lr, alpha, metric='W2', treatment_index=0):
+def fit_and_evaluate_cfrnet_image_only(input_width, input_height, in_channels, phi_depth, phi_width, h_depth, h_width, 
+                                       data_generators, data, lr, alpha, metric='W2', treatment_index=0):
     cfrnet = Conv2DCFRNet(input_width, input_height, in_channels, phi_depth, phi_width, h_depth, h_width)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     optim = 'sgd'
@@ -561,8 +561,8 @@ def fit_and_evaluate_cfrnet_demo_only(input_dim, phi_depth, phi_width, h_depth, 
 
 # 5. Benchmark 2: DCN-PD
 # 5.1 Image only
-def fit_and_evaluate_dcn_pd(input_width, input_height, in_channels, shared_conv_blocks, shared_channels, 
-                           idiosyncratic_depth, idiosyncratic_width, data_generators, data, lr, treatment_index=0):
+def fit_and_evaluate_dcn_pd_image_only(input_width, input_height, in_channels, shared_conv_blocks, shared_channels, 
+                                       idiosyncratic_depth, idiosyncratic_width, data_generators, data, lr, treatment_index=0):
     dcn_pd = Conv2DDCNPD(
         input_width=input_width, 
         input_height=input_height, 
@@ -657,12 +657,12 @@ def main():
     sqrt_pehe_cmnn_image_demo = fit_evaluate_cmnn_ensemble_image_demo(input_width, input_height, in_channels, 
                                                                       demo_input_dim, data_generators, data, lr=1e-4)
     
-    # CMICK
-    data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, demo_features=['age'])
-    input_width, input_height, in_channels = data['X_train'].shape[2], data['X_train'].shape[3], data['X_train'].shape[1]
-    demo_range = [[np.min(data['D_train'][:,d]), np.max(data['D_train'][:,d])] for d in range(data['D_train'].shape[1])]
-    sqrt_pehe_cmick_image_demo = fit_evaluate_cmick_ensemble_image_demo(input_width, input_height, in_channels, 
-                                                                        demo_range, data_generators, data, lr=1e-4)
+    # # CMICK
+    # data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, demo_features=['age'])
+    # input_width, input_height, in_channels = data['X_train'].shape[2], data['X_train'].shape[3], data['X_train'].shape[1]
+    # demo_range = [[np.min(data['D_train'][:,d]), np.max(data['D_train'][:,d])] for d in range(data['D_train'].shape[1])]
+    # sqrt_pehe_cmick_image_demo = fit_evaluate_cmick_ensemble_image_demo(input_width, input_height, in_channels, 
+    #                                                                     demo_range, data_generators, data, lr=1e-4)
     
     # Benchmarks
     # With image only
@@ -688,7 +688,7 @@ def main():
     print('PEHE (CMNN with image only):             %.4f' % (sqrt_pehe_cmnn_image_only))
     print('PEHE (CMNN with demographic info only):             %.4f' % (sqrt_pehe_cmnn_demo_only))
     print('PEHE (CMNN with image and demographic info):             %.4f' % (sqrt_pehe_cmnn_image_demo))
-    print('PEHE (CMICK with image and demographic info):             %.4f' % (sqrt_pehe_cmick_image_demo))
+    # print('PEHE (CMICK with image and demographic info):             %.4f' % (sqrt_pehe_cmick_image_demo))
     print('PEHE (CFRNet-Wass with image only):             %.4f' % (sqrt_pehe_cfrnet_wass_image_only))
     print('PEHE (CFRNet-Wass with demo only):             %.4f' % (sqrt_pehe_cfrnet_wass_demo_only))
     print('PEHE (DCN-PD with image only):             %.4f' % (sqrt_pehe_dcn_pd_image_only))
