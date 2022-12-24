@@ -22,9 +22,11 @@ class DenseCFRNet(nn.Module):
         default to 'relu'
     dropout_ratio: float, the dropout ratio to use in the representation and hypothesis networks,
         default to 0.0
+    skip_connection: bool, whether to use skip connection in the representation and hypothesis 
+        networks, default to False
     """
     def __init__(self, input_dim: int, phi_depth: int, phi_width: int, h_depth: int, h_width: int, 
-                 activation: str = 'relu', dropout_ratio: float = 0.0):
+                 activation: str = 'relu', dropout_ratio: float = 0.0, skip_connection: bool = False) -> None:
         super(DenseCFRNet, self).__init__()
         self.phi = ImplicitDenseNetKernel(
             input_dim=input_dim, 
@@ -33,7 +35,8 @@ class DenseCFRNet(nn.Module):
             num_layers_per_block=1,
             num_units=phi_width,
             activation=activation, 
-            dropout_ratio=dropout_ratio
+            dropout_ratio=dropout_ratio, 
+            skip_connection=skip_connection
         )
         self.hs = nn.ModuleList()
         for _ in range(2):
@@ -45,7 +48,8 @@ class DenseCFRNet(nn.Module):
                     num_layers_per_block=1,
                     num_units=h_width,
                     activation=activation, 
-                    dropout_ratio=dropout_ratio
+                    dropout_ratio=dropout_ratio, 
+                    skip_connection=skip_connection
                 )
             )
 
@@ -94,7 +98,7 @@ class Conv2DCFRNet(nn.Module):
     """
     def __init__(self, input_width: int, input_height: int, in_channels: int, phi_depth: int, phi_width: int, 
                  h_depth: int, h_width: int, activation: str = 'relu', dropout_ratio: float = 0.0, 
-                 batch_norm: bool = False):
+                 batch_norm: bool = False, skip_connection: bool = False) -> None:
         super(Conv2DCFRNet, self).__init__()
         self.phi = ImplicitConvNet2DKernel(
             input_width=input_width,
@@ -105,7 +109,8 @@ class Conv2DCFRNet(nn.Module):
             use_batch_norm=batch_norm,
             activation=activation,
             num_dense_units=phi_width,
-            dropout_ratio=dropout_ratio
+            dropout_ratio=dropout_ratio, 
+            skip_connection=skip_connection
         )
         self.hs = nn.ModuleList()
         for _ in range(2):
@@ -117,7 +122,8 @@ class Conv2DCFRNet(nn.Module):
                     num_layers_per_block=1,
                     num_units=h_width,
                     activation=activation, 
-                    dropout_ratio=dropout_ratio
+                    dropout_ratio=dropout_ratio, 
+                    skip_connection=skip_connection
                 )
             )
     

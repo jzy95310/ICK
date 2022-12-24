@@ -21,11 +21,12 @@ class DenseDCNPD(nn.Module):
     pd_net_depth: int, the number of layers in the propensity dropout network
     pd_net_width: int, the number of units in each layer of the propensity dropout network
     activation: str, the activation function, default to 'relu'
+    skip_connection: bool, whether to use skip connection, default to False
     gamma: float, offset hyper-parameter, default to 1.0
     """
     def __init__(self, input_dim: int, shared_depth: int = 2, shared_width: int = 512, idiosyncratic_depth: int = 2, 
                  idiosyncratic_width: int = 512, pd_net_depth: int = 2, pd_net_width: int = 512, activation: str = 'relu', 
-                 gamma: float = 1.0):
+                 skip_connection: bool = False, gamma: float = 1.0) -> None:
         super(DenseDCNPD, self).__init__()
         self.gamma = gamma
         self.shared_layers = ImplicitDenseNetKernel(
@@ -34,7 +35,8 @@ class DenseDCNPD(nn.Module):
             num_blocks=shared_depth-1,
             num_layers_per_block=1,
             num_units=shared_width,
-            activation=activation
+            activation=activation, 
+            skip_connection=skip_connection
         )
         self.idiosyncratic_layers = nn.ModuleList()
         for _ in range(2):
@@ -45,7 +47,8 @@ class DenseDCNPD(nn.Module):
                     num_blocks=idiosyncratic_depth-1,
                     num_layers_per_block=1,
                     num_units=idiosyncratic_width,
-                    activation=activation
+                    activation=activation, 
+                    skip_connection=skip_connection
                 )
             )
         self.pd_net = ImplicitDenseNetKernel(
@@ -104,7 +107,8 @@ class Conv2DDCNPD(nn.Module):
     def __init__(self, input_width: int, input_height: int, in_channels: int, shared_conv_blocks: int = 2, 
                  shared_channels: int = 64, shared_output_size: int = 512, idiosyncratic_depth: int = 2,
                  idiosyncratic_width: int = 512, pd_net_conv_blocks: int = 2, pd_net_channels: int = 64, 
-                 pd_net_dense_units: int = 128, activation: str = 'relu', gamma: float = 1.0):
+                 pd_net_dense_units: int = 128, activation: str = 'relu', skip_connection: bool = False, 
+                 gamma: float = 1.0) -> None:
         super(Conv2DDCNPD, self).__init__()
         self.gamma = gamma
         self.shared_layers = ImplicitConvNet2DKernel(
@@ -115,7 +119,8 @@ class Conv2DDCNPD(nn.Module):
             num_blocks=shared_conv_blocks,
             num_intermediate_channels=shared_channels,
             activation=activation,
-            num_hidden_dense_layers=0
+            num_hidden_dense_layers=0, 
+            skip_connection=skip_connection
         )
         self.idiosyncratic_layers = nn.ModuleList()
         for _ in range(2):
@@ -126,7 +131,8 @@ class Conv2DDCNPD(nn.Module):
                     num_blocks=idiosyncratic_depth-1,
                     num_layers_per_block=1,
                     num_units=idiosyncratic_width,
-                    activation=activation
+                    activation=activation, 
+                    skip_connection=skip_connection
                 )
             )
         self.pd_net = ImplicitConvNet2DKernel(

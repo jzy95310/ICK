@@ -9,6 +9,49 @@ import vit_pytorch as vitorch
 from abc import ABC, abstractmethod
 from .constants import ACTIVATIONS
 
+class BasicBlock1D(nn.Module):
+    """
+    Basic block of skip connection for 1D input
+    """
+    def __init__(self, input_dim: int, output_dim: int, num_layers: int, activation: str):
+        super(BasicBlock1D, self).__init__()
+        self.input_dim: int = input_dim
+        self.output_dim: int = output_dim
+        self.num_layers: int = num_layers
+        self.activation: str = activation
+
+        self.fc = nn.Linear(input_dim, output_dim)
+        self.act = ACTIVATIONS[activation]
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        identity = x
+        out = self.fc(x)
+        for _ in range(self.num_layers - 1):
+            out = self.act(out)
+            out = self.fc(out)
+        out += identity
+        out = self.act(out)
+        return out
+
+class BasicBlock2D(nn.Module):
+    """
+    Basic block of skip connection for 2D input
+    """
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: int, stride: int, 
+                 use_batch_norm: bool, activation: str, padding: int = 1):
+        super(BasicBlock2D, self).__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding=padding)
+        self.bn = nn.BatchNorm2d(out_channels) if use_batch_norm else nn.Identity()
+        self.act = ACTIVATIONS[activation]
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        identity = x
+        out = self.conv(x)
+        out = self.bn(out)
+        out += identity
+        out = self.act(out)
+        return out
+
 class ImplicitNNKernel(nn.Module, ABC):
     """
     Parent class of the implicit kernel implied by neural networks
@@ -40,15 +83,18 @@ class ImplicitNNKernel(nn.Module, ABC):
         assert 0.0 <= self.dropout_ratio <= 1.0, "The dropout ratio should be between 0.0 and 1.0."
     
     def _build_conv_block(self, in_channels: int, out_channels: int, kernel_size: int, stride: int, 
-                          use_batch_norm: bool, activation: str) -> nn.Sequential:
+                          use_batch_norm: bool, activation: str, skip_connection: bool) -> nn.Sequential:
         """
         Build a convolutional block
         """
-        return nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size, stride),
-            nn.BatchNorm2d(out_channels) if use_batch_norm else nn.Identity(),
-            ACTIVATIONS[activation]
-        )
+        if not skip_connection:
+            return nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size, stride),
+                nn.BatchNorm2d(out_channels) if use_batch_norm else nn.Identity(),
+                ACTIVATIONS[activation]
+            )
+        else:
+            return BasicBlock2D(in_channels, out_channels, kernel_size, stride, use_batch_norm, activation)
     
     def _build_dense_block(self, input_dim: int, output_dim: int, activation: str, dropout_ratio: float) -> nn.Sequential:
         """
@@ -79,30 +125,6 @@ class ImplicitNNKernel(nn.Module, ABC):
         Get the depth of the neural network
         """
         pass
-
-class BasicBlock1D(nn.Module):
-    """
-    Basic block of skip connection for 1D input
-    """
-    def __init__(self, input_dim: int, output_dim: int, num_layers: int, activation: str):
-        super(BasicBlock1D, self).__init__()
-        self.input_dim: int = input_dim
-        self.output_dim: int = output_dim
-        self.num_layers: int = num_layers
-        self.activation: str = activation
-
-        self.fc = nn.Linear(input_dim, output_dim)
-        self.act = ACTIVATIONS[activation]
-    
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        identity = x
-        out = self.fc(x)
-        for _ in range(self.num_layers - 1):
-            out = self.act(out)
-            out = self.fc(out)
-        out += identity
-        out = self.act(out)
-        return out
 
 class ImplicitDenseNetKernel(ImplicitNNKernel):
     """
@@ -241,11 +263,12 @@ class ImplicitConvNet2DKernel(ImplicitNNKernel):
     adaptive_avgpool_size: int, the output size of the adaptive average pooling layer
     num_hidden_dense_layers: int, the number of HIDDEN dense layers after the adaptive average pooling layer
     num_dense_units: int, the number of units in each HIDDEN dense layer
+    skip_connection: bool, whether to use skip connection in each convolutional block
     """
     def __init__(self, input_width: int, input_height: int, in_channels: int, latent_feature_dim: int, num_blocks: int, 
                  num_intermediate_channels: int = 64, kernel_size: int = 3, stride: int = 1, use_batch_norm: bool = False, 
                  activation: str = 'relu', adaptive_avgpool_size: int = 7, num_hidden_dense_layers: int = 2, 
-                 num_dense_units: int = 512, dropout_ratio: float = 0.0) -> None:
+                 num_dense_units: int = 512, dropout_ratio: float = 0.0, skip_connection: bool = False) -> None:
         self.input_width: int = input_width
         self.input_height: int = input_height
         self.in_channels = in_channels
@@ -256,6 +279,7 @@ class ImplicitConvNet2DKernel(ImplicitNNKernel):
         self.adaptive_avgpool_size = adaptive_avgpool_size
         self.num_hidden_dense_layers = num_hidden_dense_layers
         self.num_dense_units = num_dense_units
+        self.skip_connection = skip_connection
         super(ImplicitConvNet2DKernel, self).__init__(latent_feature_dim, num_blocks, activation, dropout_ratio)
 
         self.depth = self.num_blocks + self.num_hidden_dense_layers + 1
@@ -280,12 +304,12 @@ class ImplicitConvNet2DKernel(ImplicitNNKernel):
         if self.num_blocks > 0:
             self.conv_blocks.append(
                 self._build_conv_block(self.in_channels, self.num_intermediate_channels, self.kernel_size, self.stride,
-                                    self.use_batch_norm, self.activation)
+                                       self.use_batch_norm, self.activation, self.skip_connection)
             )
             for _ in range(self.num_blocks - 1):
                 self.conv_blocks.append(
                     self._build_conv_block(self.num_intermediate_channels, self.num_intermediate_channels, self.kernel_size, 
-                                        self.stride, self.use_batch_norm, self.activation)
+                                           self.stride, self.use_batch_norm, self.activation, self.skip_connection)
                 )
             self.conv_blocks.append(nn.AdaptiveAvgPool2d(self.adaptive_avgpool_size))
         self.conv_blocks.append(nn.Flatten())
