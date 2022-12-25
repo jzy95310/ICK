@@ -11,12 +11,14 @@ from sklearn.preprocessing import StandardScaler
 
 import torch
 from torchvision.transforms import Compose, ToTensor, Resize
+from kernels.nn import ImplicitConvNet2DKernel
 from kernels.kernel_fn import linear_kernel_nys, sq_exp_kernel_nys
 from model.ick import ICK
 from model.cmick import CMICK
 from benchmarks.cfrnet import DenseCFRNet, Conv2DCFRNet
 from benchmarks.dcn_pd import DenseDCNPD, Conv2DDCNPD
-from benchmarks.train_benchmarks import CFRNetTrainer, DCNTrainer
+from benchmarks.donut import DenseDONUT, Conv2DDONUT
+from benchmarks.train_benchmarks import CFRNetTrainer, DCNTrainer, DONUTTrainer
 from utils.train import CMICKEnsembleTrainer
 from utils.losses import *
 from utils.helpers import *
@@ -663,6 +665,75 @@ def fit_evaluate_dcn_pd_demo_only(input_dim, shared_depth, shared_width, idiosyn
     return pehe_test
 
 
+# 6. Benchmark 3: DONUT
+# 6.1 Image only
+def fit_evaluate_donut_image_only(input_width, input_height, in_channels, phi_depth, phi_width, h_depth, h_width, 
+                                  data_generators, data, lr, treatment_index=0):
+    donut = Conv2DDONUT(input_width, input_height, in_channels, phi_depth, phi_width, h_depth, h_width,
+                        activation='softplus', skip_connection=True)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    optim = 'sgd'
+    optim_params = {
+        'lr': lr, 
+        'momentum': 0.99,
+        'weight_decay': 1e-4
+    }
+    epochs, patience = 1000, 15
+    trainer = DONUTTrainer(
+        model=donut,
+        data_generators=data_generators,
+        optim=optim,
+        optim_params=optim_params, 
+        model_save_dir=None,
+        device=device,
+        epochs=epochs,
+        patience=patience, 
+        treatment_index=treatment_index
+    )
+    trainer.train()
+    
+    y_test_pred, y_test_true = trainer.predict()
+    y0_test, y1_test = data['Y0_test'], data['Y1_test']
+    pehe_test = np.sqrt(np.mean(((y_test_pred[:,1] - y_test_pred[:,0]) - (y1_test - y0_test)) ** 2))
+    print('PEHE (DONUT with image only):             %.4f' % (pehe_test))
+    
+    return pehe_test
+
+
+# 6.2 Demographic information only
+def fit_evaluate_donut_demo_only(input_dim, phi_depth, phi_width, h_depth, h_width, data_generators, 
+                                 data, lr, treatment_index=0):
+    donut = DenseDONUT(input_dim, phi_depth, phi_width, h_depth, h_width, activation='softplus', 
+                       skip_connection=True)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    optim = 'sgd'
+    optim_params = {
+        'lr': lr, 
+        'momentum': 0.99,
+        'weight_decay': 1e-4
+    }
+    epochs, patience = 1000, 15
+    trainer = DONUTTrainer(
+        model=donut,
+        data_generators=data_generators,
+        optim=optim,
+        optim_params=optim_params, 
+        model_save_dir=None,
+        device=device,
+        epochs=epochs,
+        patience=patience, 
+        treatment_index=treatment_index
+    )
+    trainer.train()
+    
+    y_test_pred, y_test_true = trainer.predict()
+    y0_test, y1_test = data['Y0_test'], data['Y1_test']
+    pehe_test = np.sqrt(np.mean(((y_test_pred[:,1] - y_test_pred[:,0]) - (y1_test - y0_test)) ** 2))
+    print('PEHE (DONUT with demo only):             %.4f' % (pehe_test))
+    
+    return pehe_test
+
+
 # Main function
 def main():
     propensity_range = np.linspace(0.1, 0.9, 9)
@@ -705,6 +776,9 @@ def main():
         sqrt_pehe_dcn_pd_image_only = fit_evaluate_dcn_pd_image_only(
             input_width, input_height, in_channels, 2, 64, 2, 512, data_generators, data, lr=1e-5
         )
+        sqrt_pehe_donut_image_only = fit_evaluate_donut_image_only(
+            input_width, input_height, in_channels, 2, 512, 2, 512, data_generators, data, lr=1e-5
+        )
         # With demographic information only
         data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, include_images=False,
                                                          propensity=propensity)
@@ -713,6 +787,9 @@ def main():
             demo_input_dim, 2, 512, 2, 512, data_generators, data, lr=1e-5, alpha=1e-2, metric='W2'
         )
         sqrt_pehe_dcn_pd_demo_only = fit_evaluate_dcn_pd_demo_only(
+            demo_input_dim, 2, 512, 2, 512, data_generators, data, lr=1e-5
+        )
+        sqrt_pehe_donut_demo_only = fit_evaluate_donut_demo_only(
             demo_input_dim, 2, 512, 2, 512, data_generators, data, lr=1e-5
         )
         
@@ -725,6 +802,8 @@ def main():
         print('PEHE (CFRNet-Wass with demo only):             %.4f' % (sqrt_pehe_cfrnet_wass_demo_only))
         print('PEHE (DCN-PD with image only):             %.4f' % (sqrt_pehe_dcn_pd_image_only))
         print('PEHE (DCN-PD with demo only):             %.4f' % (sqrt_pehe_dcn_pd_demo_only))
+        print('PEHE (DONUT with image only):             %.4f' % (sqrt_pehe_donut_image_only))
+        print('PEHE (DONUT with demo only):             %.4f' % (sqrt_pehe_donut_demo_only))
         
         res['sqrt_PEHE']['cmnn_image_only'].append(sqrt_pehe_cmnn_image_only)
         res['sqrt_PEHE']['cmnn_demo_only'].append(sqrt_pehe_cmnn_demo_only)
@@ -734,6 +813,8 @@ def main():
         res['sqrt_PEHE']['cfrnet_wass_demo_only'].append(sqrt_pehe_cfrnet_wass_demo_only)
         res['sqrt_PEHE']['dcn_pd_image_only'].append(sqrt_pehe_dcn_pd_image_only)
         res['sqrt_PEHE']['dcn_pd_demo_only'].append(sqrt_pehe_dcn_pd_demo_only)
+        res['sqrt_PEHE']['donut_image_only'].append(sqrt_pehe_donut_image_only)
+        res['sqrt_PEHE']['donut_demo_only'].append(sqrt_pehe_donut_demo_only)
     
     with open('./results/covid_montreal_results.pkl', 'wb') as fp:
         pkl.dump(res, fp)
@@ -744,10 +825,10 @@ def main():
     fig, axs = plt.subplots(2, 2, figsize=(15, 14))
     fig.delaxes(axs[1,1])
     propensity_range = saved_res['propensity_range']
-    model_names = ['cmnn_image_only', 'cfrnet_wass_image_only', 'dcn_pd_image_only']
-    colors = ['blue', 'red', 'purple']
-    markers = ['.', '^', '*']
-    labels = ['CMDE', 'CFRNet', 'DCN-PD']
+    model_names = ['cmnn_image_only', 'cfrnet_wass_image_only', 'dcn_pd_image_only', 'donut_image_only']
+    colors = ['blue', 'red', 'purple', 'magenta']
+    markers = ['.', '^', '*', 's']
+    labels = ['CMDE', 'CFRNet', 'DCN-PD', 'DONUT']
     for i in range(len(model_names)):
         axs[0,0].plot(propensity_range, saved_res['sqrt_PEHE'][model_names[i]], lw=1, color=colors[i], 
                       marker=markers[i], label=labels[i])
@@ -758,7 +839,7 @@ def main():
     axs[0,0].legend(fontsize=15)
     axs[0,0].set_title('$\sqrt{PEHE}$ with only image as input', fontsize=15)
 
-    model_names = ['cmnn_demo_only', 'cfrnet_wass_demo_only', 'dcn_pd_demo_only']
+    model_names = ['cmnn_demo_only', 'cfrnet_wass_demo_only', 'dcn_pd_demo_only', 'donut_demo_only']
     for i in range(len(model_names)):
         axs[0,1].plot(propensity_range, saved_res['sqrt_PEHE'][model_names[i]], lw=1, color=colors[i], 
                       marker=markers[i], label=labels[i])

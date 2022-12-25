@@ -31,7 +31,10 @@ class DenseDONUT(DenseCFRNet):
                  activation: str = 'elu', dropout_ratio: float = 0.0, skip_connection: bool = False):
         super(DenseDONUT, self).__init__(input_dim, phi_depth, phi_width, h_depth, h_width,
                                          activation, dropout_ratio, skip_connection)
-        self.logreg = nn.Linear(input_dim, 1)
+        self.logreg = nn.Sequential(
+            nn.Linear(input_dim, 1), 
+            nn.Sigmoid()
+        )
         self.epsilon = nn.Parameter(torch.zeros(1,1))
         nn.init.normal_(self.epsilon, mean=0.0, std=0.05)
     
@@ -76,15 +79,19 @@ class Conv2DDONUT(Conv2DCFRNet):
         super(Conv2DDONUT, self).__init__(input_width, input_height, in_channels, phi_depth, phi_width, 
                                           h_depth, h_width, activation, dropout_ratio, batch_norm, 
                                           skip_connection)
-        self.propensity_model = ImplicitConvNet2DKernel(
-            input_width=input_width,
-            input_height=input_height,
-            in_channels=in_channels,
-            latent_feature_dim=1,
-            num_blocks=1,
-            activation=activation,
-            num_hidden_dense_layers=1,
-            num_dense_units=propensity_net_width
+        self.propensity_model = nn.Sequential(
+            ImplicitConvNet2DKernel(
+                input_width=input_width,
+                input_height=input_height,
+                in_channels=in_channels,
+                latent_feature_dim=1,
+                num_blocks=1,
+                activation=activation,
+                num_hidden_dense_layers=1,
+                num_dense_units=propensity_net_width, 
+                skip_connection=skip_connection
+            ), 
+            nn.Sigmoid()
         )
         self.epsilon = nn.Parameter(torch.zeros(1,1))
         nn.init.normal_(self.epsilon, mean=0.0, std=0.05)

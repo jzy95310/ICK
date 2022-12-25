@@ -1,4 +1,5 @@
-# losses.py: a file containing the definition of PyTorch loss functions that can be useful for training ICK models
+# losses.py: a file containing the definition of PyTorch loss functions that can be useful for training ICK/CMDE 
+# models on causal inference tasks
 # SEE LICENSE STATEMENT AT THE END OF THE FILE
 
 from typing import Optional
@@ -29,8 +30,8 @@ class FactualMSELoss(_Loss):
 
         Arguments
         --------------
-        prediction: torch.Tensor, a tensor of shape (num_estimators, batch_size, 2) that contains the predicted 
-            control and treatment outcomes for all estimators in the ensemble
+        prediction: torch.Tensor, a tensor of shape (num_estimators, batch_size, 2) or (batch_size, 2) that 
+            contains the predicted control and treatment outcomes
         target: torch.Tensor, a tensor of shape (batch_size,) that contains the true factual outcomes
         group: torch.Tensor, a tensor of shape (batch_size,) that contains the group assignment of each data point
 
@@ -129,7 +130,8 @@ class CFRLoss(_Loss):
 
         Arguments
         --------------
-        prediction: torch.Tensor, a tensor of shape (batch_size,) that contains the predicted outcomes
+        prediction: torch.Tensor, a tensor of shape (batch_size,) that contains the predicted outcomes 
+            only for factual observations
         target: torch.Tensor, a tensor of shape (batch_size,) that contains the true factual outcomes
         group: torch.Tensor, a tensor of shape (batch_size,) that contains the group assignment of each data point
         phi_output: torch.Tensor, a tensor of shape (batch_size, phi_width) that contains the output
@@ -140,6 +142,50 @@ class CFRLoss(_Loss):
         factual_err = torch.mean(weight*(target-prediction)**2)
         imbalance_term = self.ipm_metric[self.metric](phi0, phi1)
         return factual_err + self.alpha*imbalance_term
+
+class DONUTLoss(_Loss):
+    """
+    Factual loss with orthogonal regularization used for DONUT model as proposed by Hatt and 
+    Stefan (2021). The loss is composed of an MSE term for observed outcomes, a cross-entropy 
+    term for observed group assignments, and an orthogonal regularization term which consists 
+    of a pseudo outcome and a perturbation function
+
+    Arguments
+    --------------
+    alpha: float, weight for cross-entropy term
+    beta: float, weight for orthogonal regularization term
+    """
+    def __init__(self, size_average: bool = None, reduce: bool = None, reduction: str = 'mean', 
+                 alpha: float = 1., beta: float = 1.) -> None:
+        self.alpha = alpha
+        self.beta = beta
+        super(DONUTLoss, self).__init__(size_average, reduce, reduction)
+    
+    def forward(self, prediction: torch.Tensor, target: torch.Tensor, group: torch.Tensor, 
+                global_pred: torch.Tensor) -> torch.Tensor:
+        """
+        Arguments
+        --------------
+        prediction: torch.Tensor, a tensor of shape (batch_size, 4) that is a concatenated tensor of 
+            the predicted outcomes for control and treatment groups, the predicted group assignments,
+            and the model parameter epsilon
+        target: torch.Tensor, a tensor of shape (batch_size,) that contains the true factual outcomes
+        group: torch.Tensor, a tensor of shape (batch_size,) that contains the true group assignments
+        global_pred: torch.Tensor, a tensor of shape (N_train, 2) that contains the predicted potential
+            outcomes for all training data points, used for estimating ATE
+        """
+        y0_pred, y1_pred, group_pred, epsilons = prediction[:, 0], prediction[:, 1], prediction[:, 2], prediction[:, 3]
+        # Factual loss
+        mse_loss = F.mse_loss(y0_pred[group==0], target[group==0], reduction=self.reduction) + \
+                   F.mse_loss(y1_pred[group==1], target[group==1], reduction=self.reduction)
+        t_pred = (group_pred + 0.001) / 1.002
+        bce_loss = F.binary_cross_entropy(t_pred, group, reduction=self.reduction)
+        # Orthogonal regularization
+        t_pred = (group_pred + 0.01) / 1.02
+        y0_pert = y0_pred + epsilons * (group - t_pred)
+        psi = torch.mean(global_pred[:, 1] - global_pred[:, 0])
+        orthogonal_reg = torch.mean((target - psi * group - y0_pert)**2)
+        return mse_loss + self.alpha * bce_loss + self.beta * orthogonal_reg
 
 # ########################################################################################
 # MIT License
