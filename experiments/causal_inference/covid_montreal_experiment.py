@@ -100,7 +100,7 @@ def load_and_preprocess_data(train_ratio, test_ratio, random_state, include_imag
 # 2.1 Image information only
 def fit_evaluate_cmnn_ensemble_image_only(input_width, input_height, in_channels, data_generators, 
                                           data, lr, treatment_index=0):
-    alpha11, alpha12, alpha13 = 1.0, 1.0, 0.1
+    alpha11, alpha12, alpha13 = 1.0, 1.0, 0.5
     num_estimators = 10
     
     ensemble, ensemble_weights = [], {}
@@ -189,7 +189,7 @@ def fit_evaluate_cmnn_ensemble_image_only(input_width, input_height, in_channels
 
 # 2.2 Demographic information only
 def fit_evaluate_cmnn_ensemble_demo_only(input_dim, data_generators, data, lr, treatment_index=0):
-    alpha11, alpha12, alpha13 = 1.0, 1.0, 0.1
+    alpha11, alpha12, alpha13 = 1.0, 1.0, 0.5
     num_estimators = 10
     
     ensemble, ensemble_weights = [], {}
@@ -276,7 +276,7 @@ def fit_evaluate_cmnn_ensemble_demo_only(input_dim, data_generators, data, lr, t
 # 2.3 Image + demographic information
 def fit_evaluate_cmnn_ensemble_image_demo(input_width, input_height, in_channels, demo_dim, data_generators, 
                                           data, lr, treatment_index=0):
-    alpha11, alpha12, alpha13 = 1.0, 1.0, 0.1
+    alpha11, alpha12, alpha13 = 1.0, 1.0, 0.5
     num_estimators = 10
     
     ensemble, ensemble_weights = [], {}
@@ -741,6 +741,7 @@ def main():
     res = {'propensity_range': propensity_range, 'sqrt_PEHE': defaultdict(list)}
     
     for propensity in propensity_range:
+        print("Propensity: " + str(propensity))
         # CMNN
         data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, demo_features=[], 
                                                          propensity=propensity)
@@ -825,10 +826,10 @@ def main():
     fig, axs = plt.subplots(2, 2, figsize=(15, 14))
     fig.delaxes(axs[1,1])
     propensity_range = saved_res['propensity_range']
-    model_names = ['cmnn_image_only', 'cfrnet_wass_image_only', 'dcn_pd_image_only', 'donut_image_only']
-    colors = ['blue', 'red', 'purple', 'magenta']
-    markers = ['.', '^', '*', 's']
-    labels = ['CMDE', 'CFRNet', 'DCN-PD', 'DONUT']
+    model_names = ['cmnn_image_only', 'cfrnet_wass_image_only', 'dcn_pd_image_only', 'donut_image_only', 'cmnn_image_demo']
+    colors = ['blue', 'red', 'purple', 'magenta', 'green']
+    markers = ['.', '^', '*', 's', 'h']
+    labels = ['CMDE', 'CFRNet', 'DCN-PD', 'DONUT', 'CMDE-MUL']
     for i in range(len(model_names)):
         axs[0,0].plot(propensity_range, saved_res['sqrt_PEHE'][model_names[i]], lw=1, color=colors[i], 
                       marker=markers[i], label=labels[i])
@@ -839,7 +840,10 @@ def main():
     axs[0,0].legend(fontsize=15)
     axs[0,0].set_title('$\sqrt{PEHE}$ with only image as input', fontsize=15)
 
-    model_names = ['cmnn_demo_only', 'cfrnet_wass_demo_only', 'dcn_pd_demo_only', 'donut_demo_only']
+    model_names = ['cmnn_demo_only', 'cfrnet_wass_demo_only', 'donut_demo_only', 'cmnn_image_demo']
+    colors = ['blue', 'red', 'magenta', 'green']
+    markers = ['.', '^', 's', 'h']
+    labels = ['CMDE', 'CFRNet', 'DONUT', 'CMDE-MUL']
     for i in range(len(model_names)):
         axs[0,1].plot(propensity_range, saved_res['sqrt_PEHE'][model_names[i]], lw=1, color=colors[i], 
                       marker=markers[i], label=labels[i])
@@ -851,6 +855,7 @@ def main():
     axs[0,1].set_title('$\sqrt{PEHE}$ with only demographic information as input', fontsize=15)
 
     model_names = ['cmnn_image_only', 'cmnn_demo_only', 'cmnn_image_demo']
+    colors = ['blue', 'red', 'green']
     labels = ['Image input', 'Demo input', 'Image + demo input']
     for i in range(len(model_names)):
         axs[1,0].plot(propensity_range, saved_res['sqrt_PEHE'][model_names[i]], lw=1, color=colors[i], 
