@@ -99,7 +99,7 @@ def load_and_preprocess_data(train_ratio, test_ratio, random_state, include_imag
 # 2. Build, train, and evaluate CMNN model
 # 2.1 Image information only
 def fit_evaluate_cmnn_ensemble_image_only(input_width, input_height, in_channels, data_generators, 
-                                          data, lr, treatment_index=0):
+                                          data, lr, treatment_index=0, load_weights=False):
     alpha11, alpha12, alpha13 = 1.0, 1.0, 0.5
     num_estimators = 10
     
@@ -150,12 +150,25 @@ def fit_evaluate_cmnn_ensemble_image_only(input_width, input_height, in_channels
                 }
             }
         )
+        if load_weights:
+            for f in ['f11', 'f12', 'f13']:
+                eval(f).kernels[0].load_state_dict(torch.load('./checkpoints/cmde_img_covid_montreal.pt')['model_'+str(i+1)][f])
+        else:
+            model_weights = {
+                'f11': f11.kernels[0].state_dict(), 'f12': f12.kernels[0].state_dict(), 'f13': f13.kernels[0].state_dict()
+            }
+            ensemble_weights['model_'+str(i+1)] = model_weights
         baselearner = CMICK(
             control_components=[f11], treatment_components=[f12], shared_components=[f13],
             control_coeffs=[alpha11], treatment_coeffs=[alpha12], shared_coeffs=[alpha13], 
             coeff_trainable=True
         )
         ensemble.append(baselearner)
+    
+    if not load_weights:
+        if not os.path.exists('./checkpoints'):
+            os.makedirs('./checkpoints')
+        torch.save(ensemble_weights, './checkpoints/cmde_img_covid_montreal.pt')
     
     # The index of "T_train" in "data_train" is 0
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -188,7 +201,8 @@ def fit_evaluate_cmnn_ensemble_image_only(input_width, input_height, in_channels
 
 
 # 2.2 Demographic information only
-def fit_evaluate_cmnn_ensemble_demo_only(input_dim, data_generators, data, lr, treatment_index=0):
+def fit_evaluate_cmnn_ensemble_demo_only(input_dim, data_generators, data, lr, treatment_index=0, 
+                                         load_weights=False):
     alpha11, alpha12, alpha13 = 1.0, 1.0, 0.5
     num_estimators = 10
     
@@ -236,12 +250,25 @@ def fit_evaluate_cmnn_ensemble_demo_only(input_dim, data_generators, data, lr, t
                 }
             }
         )
+        if load_weights:
+            for f in ['f11', 'f12', 'f13']:
+                eval(f).kernels[0].load_state_dict(torch.load('./checkpoints/cmde_demo_covid_montreal.pt')['model_'+str(i+1)][f])
+        else:
+            model_weights = {
+                'f11': f11.kernels[0].state_dict(), 'f12': f12.kernels[0].state_dict(), 'f13': f13.kernels[0].state_dict()
+            }
+            ensemble_weights['model_'+str(i+1)] = model_weights
         baselearner = CMICK(
             control_components=[f11], treatment_components=[f12], shared_components=[f13],
             control_coeffs=[alpha11], treatment_coeffs=[alpha12], shared_coeffs=[alpha13], 
             coeff_trainable=True
         )
         ensemble.append(baselearner)
+    
+    if not load_weights:
+        if not os.path.exists('./checkpoints'):
+            os.makedirs('./checkpoints')
+        torch.save(ensemble_weights, './checkpoints/cmde_demo_covid_montreal.pt')
     
     # The index of "T_train" in "data_train" is 0
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -275,7 +302,7 @@ def fit_evaluate_cmnn_ensemble_demo_only(input_dim, data_generators, data, lr, t
 
 # 2.3 Image + demographic information
 def fit_evaluate_cmnn_ensemble_image_demo(input_width, input_height, in_channels, demo_dim, data_generators, 
-                                          data, lr, treatment_index=0):
+                                          data, lr, treatment_index=0, load_weights=False):
     alpha11, alpha12, alpha13 = 1.0, 1.0, 0.5
     num_estimators = 10
     
@@ -353,12 +380,25 @@ def fit_evaluate_cmnn_ensemble_image_demo(input_width, input_height, in_channels
                 }
             }
         )
+        if load_weights:
+            for f in ['f11', 'f12', 'f13']:
+                eval(f).kernels[0].load_state_dict(torch.load('./checkpoints/cmde_img_demo_covid_montreal.pt')['model_'+str(i+1)][f])
+        else:
+            model_weights = {
+                'f11': f11.kernels[0].state_dict(), 'f12': f12.kernels[0].state_dict(), 'f13': f13.kernels[0].state_dict()
+            }
+            ensemble_weights['model_'+str(i+1)] = model_weights
         baselearner = CMICK(
             control_components=[f11], treatment_components=[f12], shared_components=[f13],
             control_coeffs=[alpha11], treatment_coeffs=[alpha12], shared_coeffs=[alpha13], 
             coeff_trainable=True
         )
         ensemble.append(baselearner)
+    
+    if not load_weights:
+        if not os.path.exists('./checkpoints'):
+            os.makedirs('./checkpoints')
+        torch.save(ensemble_weights, './checkpoints/cmde_img_demo_covid_montreal.pt')
         
     # The index of "T_train" in "data_train" is 0
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -394,7 +434,7 @@ def fit_evaluate_cmnn_ensemble_image_demo(input_width, input_height, in_channels
 # 3.1 Image + age information
 def fit_evaluate_cmick_ensemble_image_demo(input_width, input_height, in_channels, demo_range, data_generators, 
                                            data, lr, treatment_index=0):
-    alpha11, alpha12, alpha13 = 1.0, 1.0, 0.1
+    alpha11, alpha12, alpha13 = 1.0, 1.0, 0.5
     num_estimators = 10
     
     ensemble, ensemble_weights = [], {}
@@ -511,9 +551,16 @@ def fit_evaluate_cmick_ensemble_image_demo(input_width, input_height, in_channel
 # 4. Benchmark 1: CFRNet
 # 4.1 Image only
 def fit_evaluate_cfrnet_image_only(input_width, input_height, in_channels, phi_depth, phi_width, h_depth, h_width, 
-                                   data_generators, data, lr, alpha, metric='W2', treatment_index=0):
+                                   data_generators, data, lr, alpha, metric='W2', treatment_index=0, 
+                                   load_weights=False):
     cfrnet = Conv2DCFRNet(input_width, input_height, in_channels, phi_depth, phi_width, h_depth, h_width,
                           activation='softplus', skip_connection=True)
+    if load_weights:
+        cfrnet.load_state_dict(torch.load('./checkpoints/cfrnet_img_covid_montreal.pt'))
+    else:
+        if not os.path.exists('./checkpoints'):
+            os.makedirs('./checkpoints')
+        torch.save(cfrnet.state_dict(), './checkpoints/cfrnet_img_covid_montreal.pt')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     optim = 'sgd'
     optim_params = {
@@ -546,9 +593,15 @@ def fit_evaluate_cfrnet_image_only(input_width, input_height, in_channels, phi_d
 
 # 4.2 Demographic information only
 def fit_evaluate_cfrnet_demo_only(input_dim, phi_depth, phi_width, h_depth, h_width, data_generators, 
-                                  data, lr, alpha, metric='W2', treatment_index=0):
+                                  data, lr, alpha, metric='W2', treatment_index=0, load_weights=False):
     cfrnet = DenseCFRNet(input_dim, phi_depth, phi_width, h_depth, h_width, activation='softplus', 
                          skip_connection=True)
+    if load_weights:
+        cfrnet.load_state_dict(torch.load('./checkpoints/cfrnet_demo_covid_montreal.pt'))
+    else:
+        if not os.path.exists('./checkpoints'):
+            os.makedirs('./checkpoints')
+        torch.save(cfrnet.state_dict(), './checkpoints/cfrnet_demo_covid_montreal.pt')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     optim = 'sgd'
     optim_params = {
@@ -583,7 +636,7 @@ def fit_evaluate_cfrnet_demo_only(input_dim, phi_depth, phi_width, h_depth, h_wi
 # 5.1 Image only
 def fit_evaluate_dcn_pd_image_only(input_width, input_height, in_channels, shared_conv_blocks, shared_channels, 
                                    idiosyncratic_depth, idiosyncratic_width, data_generators, data, lr, 
-                                   treatment_index=0):
+                                   treatment_index=0, load_weights=False):
     dcn_pd = Conv2DDCNPD(
         input_width=input_width, 
         input_height=input_height, 
@@ -595,6 +648,12 @@ def fit_evaluate_dcn_pd_image_only(input_width, input_height, in_channels, share
         activation='softplus', 
         skip_connection=True
     )
+    if load_weights:
+        dcn_pd.load_state_dict(torch.load('./checkpoints/dcn_pd_img_covid_montreal.pt'))
+    else:
+        if not os.path.exists('./checkpoints'):
+            os.makedirs('./checkpoints')
+        torch.save(dcn_pd.state_dict(), './checkpoints/dcn_pd_img_covid_montreal.pt')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     optim = 'sgd'
     optim_params = {
@@ -626,7 +685,7 @@ def fit_evaluate_dcn_pd_image_only(input_width, input_height, in_channels, share
 
 # 5.2 Demographic information only
 def fit_evaluate_dcn_pd_demo_only(input_dim, shared_depth, shared_width, idiosyncratic_depth, idiosyncratic_width,
-                                  data_generators, data, lr, treatment_index=0):
+                                  data_generators, data, lr, treatment_index=0, load_weights=False):
     dcn_pd = DenseDCNPD(
         input_dim=input_dim, 
         shared_depth=shared_depth, 
@@ -636,6 +695,12 @@ def fit_evaluate_dcn_pd_demo_only(input_dim, shared_depth, shared_width, idiosyn
         activation='softplus', 
         skip_connection=True
     )
+    if load_weights:
+        dcn_pd.load_state_dict(torch.load('./checkpoints/dcn_pd_demo_covid_montreal.pt'))
+    else:
+        if not os.path.exists('./checkpoints'):
+            os.makedirs('./checkpoints')
+        torch.save(dcn_pd.state_dict(), './checkpoints/dcn_pd_demo_covid_montreal.pt')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     optim = 'sgd'
     optim_params = {
@@ -668,9 +733,15 @@ def fit_evaluate_dcn_pd_demo_only(input_dim, shared_depth, shared_width, idiosyn
 # 6. Benchmark 3: DONUT
 # 6.1 Image only
 def fit_evaluate_donut_image_only(input_width, input_height, in_channels, phi_depth, phi_width, h_depth, h_width, 
-                                  data_generators, data, lr, treatment_index=0):
+                                  data_generators, data, lr, treatment_index=0, load_weights=False):
     donut = Conv2DDONUT(input_width, input_height, in_channels, phi_depth, phi_width, h_depth, h_width,
                         activation='softplus', skip_connection=True)
+    if load_weights:
+        donut.load_state_dict(torch.load('./checkpoints/donut_img_covid_montreal.pt'))
+    else:
+        if not os.path.exists('./checkpoints'):
+            os.makedirs('./checkpoints')
+        torch.save(donut.state_dict(), './checkpoints/donut_img_covid_montreal.pt')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     optim = 'sgd'
     optim_params = {
@@ -702,9 +773,15 @@ def fit_evaluate_donut_image_only(input_width, input_height, in_channels, phi_de
 
 # 6.2 Demographic information only
 def fit_evaluate_donut_demo_only(input_dim, phi_depth, phi_width, h_depth, h_width, data_generators, 
-                                 data, lr, treatment_index=0):
+                                 data, lr, treatment_index=0, load_weights=False):
     donut = DenseDONUT(input_dim, phi_depth, phi_width, h_depth, h_width, activation='softplus', 
                        skip_connection=True)
+    if load_weights:
+        donut.load_state_dict(torch.load('./checkpoints/donut_demo_covid_montreal.pt'))
+    else:
+        if not os.path.exists('./checkpoints'):
+            os.makedirs('./checkpoints')
+        torch.save(donut.state_dict(), './checkpoints/donut_demo_covid_montreal.pt')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     optim = 'sgd'
     optim_params = {
@@ -737,85 +814,95 @@ def fit_evaluate_donut_demo_only(input_dim, phi_depth, phi_width, h_depth, h_wid
 # Main function
 def main():
     propensity_range = np.linspace(0.1, 0.9, 9)
-    train_ratio, test_ratio = 0.40, 0.40
+    train_ratio, test_ratio = 0.56, 0.20
     res = {'propensity_range': propensity_range, 'sqrt_PEHE': defaultdict(list)}
+    num_repetitions = 10
     
-    for propensity in propensity_range:
-        print("Propensity: " + str(propensity))
-        # CMNN
-        data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, demo_features=[], 
-                                                         propensity=propensity)
-        input_width, input_height, in_channels = data['X_train'].shape[2], data['X_train'].shape[3], data['X_train'].shape[1]
-        sqrt_pehe_cmnn_image_only = fit_evaluate_cmnn_ensemble_image_only(input_width, input_height, in_channels, 
-                                                                          data_generators, data, lr=5e-5)
-        data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, include_images=False, 
-                                                         propensity=propensity)
-        demo_input_dim = data['D_train'].shape[1]
-        sqrt_pehe_cmnn_demo_only = fit_evaluate_cmnn_ensemble_demo_only(demo_input_dim, data_generators, data, lr=5e-4)
-        data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1,
-                                                         propensity=propensity)
-        demo_input_dim = data['D_train'].shape[1]
-        sqrt_pehe_cmnn_image_demo = fit_evaluate_cmnn_ensemble_image_demo(input_width, input_height, in_channels, 
-                                                                          demo_input_dim, data_generators, data, lr=1e-4)
+    for rep in range(num_repetitions):
+        print("Repetition: " + str(rep))
+        sqrt_pehe_single_rep = defaultdict(list)
+        for i in range(len(propensity_range)):
+            # CMNN
+            data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, demo_features=[], 
+                                                            propensity=propensity_range[i])
+            input_width, input_height, in_channels = data['X_train'].shape[2], data['X_train'].shape[3], data['X_train'].shape[1]
+            sqrt_pehe_cmnn_image_only = fit_evaluate_cmnn_ensemble_image_only(input_width, input_height, in_channels, 
+                                                                            data_generators, data, lr=5e-5, load_weights=(i!=0))
+            data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, include_images=False, 
+                                                            propensity=propensity_range[i])
+            demo_input_dim = data['D_train'].shape[1]
+            sqrt_pehe_cmnn_demo_only = fit_evaluate_cmnn_ensemble_demo_only(demo_input_dim, data_generators, data, lr=5e-4, 
+                                                                            load_weights=(i!=0))
+            data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1,
+                                                            propensity=propensity_range[i])
+            demo_input_dim = data['D_train'].shape[1]
+            sqrt_pehe_cmnn_image_demo = fit_evaluate_cmnn_ensemble_image_demo(input_width, input_height, in_channels, 
+                                                                            demo_input_dim, data_generators, data, 
+                                                                            lr=1e-4, load_weights=(i!=0))
 
-#         # CMICK
-#         data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, demo_features=['age'])
-#         input_width, input_height, in_channels = data['X_train'].shape[2], data['X_train'].shape[3], data['X_train'].shape[1]
-#         demo_range = [[np.min(data['D_train'][:,d]), np.max(data['D_train'][:,d])] for d in range(data['D_train'].shape[1])]
-#         sqrt_pehe_cmick_image_demo = fit_evaluate_cmick_ensemble_image_demo(input_width, input_height, in_channels, 
-#                                                                             demo_range, data_generators, data, lr=1e-4)
+    #         # CMICK
+    #         data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, demo_features=['age'])
+    #         input_width, input_height, in_channels = data['X_train'].shape[2], data['X_train'].shape[3], data['X_train'].shape[1]
+    #         demo_range = [[np.min(data['D_train'][:,d]), np.max(data['D_train'][:,d])] for d in range(data['D_train'].shape[1])]
+    #         sqrt_pehe_cmick_image_demo = fit_evaluate_cmick_ensemble_image_demo(input_width, input_height, in_channels, 
+    #                                                                             demo_range, data_generators, data, lr=1e-4)
 
-        # Benchmarks
-        # With image only
-        data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, demo_features=[],
-                                                         propensity=propensity)
-        input_width, input_height, in_channels = data['X_train'].shape[2], data['X_train'].shape[3], data['X_train'].shape[1]
-        sqrt_pehe_cfrnet_wass_image_only = fit_evaluate_cfrnet_image_only(
-            input_width, input_height, in_channels, 2, 512, 2, 512, data_generators, data, lr=1e-5,
-            alpha=1e-2, metric='W2'
-        )
-        sqrt_pehe_dcn_pd_image_only = fit_evaluate_dcn_pd_image_only(
-            input_width, input_height, in_channels, 2, 64, 2, 512, data_generators, data, lr=1e-5
-        )
-        sqrt_pehe_donut_image_only = fit_evaluate_donut_image_only(
-            input_width, input_height, in_channels, 2, 512, 2, 512, data_generators, data, lr=1e-5
-        )
-        # With demographic information only
-        data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, include_images=False,
-                                                         propensity=propensity)
-        demo_input_dim = data['D_train'].shape[1]
-        sqrt_pehe_cfrnet_wass_demo_only = fit_evaluate_cfrnet_demo_only(
-            demo_input_dim, 2, 512, 2, 512, data_generators, data, lr=1e-5, alpha=1e-2, metric='W2'
-        )
-        sqrt_pehe_dcn_pd_demo_only = fit_evaluate_dcn_pd_demo_only(
-            demo_input_dim, 2, 512, 2, 512, data_generators, data, lr=1e-5
-        )
-        sqrt_pehe_donut_demo_only = fit_evaluate_donut_demo_only(
-            demo_input_dim, 2, 512, 2, 512, data_generators, data, lr=1e-5
-        )
-        
-        print('Propensity: {:.1f}'.format(propensity))
-        print('PEHE (CMNN with image only):             %.4f' % (sqrt_pehe_cmnn_image_only))
-        print('PEHE (CMNN with demographic info only):             %.4f' % (sqrt_pehe_cmnn_demo_only))
-        print('PEHE (CMNN with image and demographic info):             %.4f' % (sqrt_pehe_cmnn_image_demo))
-#         print('PEHE (CMICK with image and demographic info):             %.4f' % (sqrt_pehe_cmick_image_demo))
-        print('PEHE (CFRNet-Wass with image only):             %.4f' % (sqrt_pehe_cfrnet_wass_image_only))
-        print('PEHE (CFRNet-Wass with demo only):             %.4f' % (sqrt_pehe_cfrnet_wass_demo_only))
-        print('PEHE (DCN-PD with image only):             %.4f' % (sqrt_pehe_dcn_pd_image_only))
-        print('PEHE (DCN-PD with demo only):             %.4f' % (sqrt_pehe_dcn_pd_demo_only))
-        print('PEHE (DONUT with image only):             %.4f' % (sqrt_pehe_donut_image_only))
-        print('PEHE (DONUT with demo only):             %.4f' % (sqrt_pehe_donut_demo_only))
-        
-        res['sqrt_PEHE']['cmnn_image_only'].append(sqrt_pehe_cmnn_image_only)
-        res['sqrt_PEHE']['cmnn_demo_only'].append(sqrt_pehe_cmnn_demo_only)
-        res['sqrt_PEHE']['cmnn_image_demo'].append(sqrt_pehe_cmnn_image_demo)
-#         res['sqrt_PEHE']['cmick_image_demo'].append(sqrt_pehe_cmick_image_demo)
-        res['sqrt_PEHE']['cfrnet_wass_image_only'].append(sqrt_pehe_cfrnet_wass_image_only)
-        res['sqrt_PEHE']['cfrnet_wass_demo_only'].append(sqrt_pehe_cfrnet_wass_demo_only)
-        res['sqrt_PEHE']['dcn_pd_image_only'].append(sqrt_pehe_dcn_pd_image_only)
-        res['sqrt_PEHE']['dcn_pd_demo_only'].append(sqrt_pehe_dcn_pd_demo_only)
-        res['sqrt_PEHE']['donut_image_only'].append(sqrt_pehe_donut_image_only)
-        res['sqrt_PEHE']['donut_demo_only'].append(sqrt_pehe_donut_demo_only)
+            # Benchmarks
+            # With image only
+            data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, demo_features=[],
+                                                            propensity=propensity_range[i])
+            input_width, input_height, in_channels = data['X_train'].shape[2], data['X_train'].shape[3], data['X_train'].shape[1]
+            sqrt_pehe_cfrnet_wass_image_only = fit_evaluate_cfrnet_image_only(
+                input_width, input_height, in_channels, 2, 512, 2, 512, data_generators, data, lr=1e-5,
+                alpha=1e-2, metric='W2', load_weights=(i!=0)
+            )
+            sqrt_pehe_dcn_pd_image_only = fit_evaluate_dcn_pd_image_only(
+                input_width, input_height, in_channels, 2, 64, 2, 512, data_generators, data, lr=1e-5, 
+                load_weights=(i!=0)
+            )
+            sqrt_pehe_donut_image_only = fit_evaluate_donut_image_only(
+                input_width, input_height, in_channels, 2, 512, 2, 512, data_generators, data, lr=1e-5, 
+                load_weights=(i!=0)
+            )
+            # With demographic information only
+            data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, include_images=False,
+                                                            propensity=propensity_range[i])
+            demo_input_dim = data['D_train'].shape[1]
+            sqrt_pehe_cfrnet_wass_demo_only = fit_evaluate_cfrnet_demo_only(
+                demo_input_dim, 2, 512, 2, 512, data_generators, data, lr=1e-5, alpha=1e-2, metric='W2', 
+                load_weights=(i!=0)
+            )
+            sqrt_pehe_dcn_pd_demo_only = fit_evaluate_dcn_pd_demo_only(
+                demo_input_dim, 2, 512, 2, 512, data_generators, data, lr=1e-5, load_weights=(i!=0)
+            )
+            sqrt_pehe_donut_demo_only = fit_evaluate_donut_demo_only(
+                demo_input_dim, 2, 512, 2, 512, data_generators, data, lr=1e-5, load_weights=(i!=0)
+            )
+            
+            print('Propensity: {:.1f}'.format(propensity_range[i]))
+            print('PEHE (CMNN with image only):             %.4f' % (sqrt_pehe_cmnn_image_only))
+            print('PEHE (CMNN with demographic info only):             %.4f' % (sqrt_pehe_cmnn_demo_only))
+            print('PEHE (CMNN with image and demographic info):             %.4f' % (sqrt_pehe_cmnn_image_demo))
+    #         print('PEHE (CMICK with image and demographic info):             %.4f' % (sqrt_pehe_cmick_image_demo))
+            print('PEHE (CFRNet-Wass with image only):             %.4f' % (sqrt_pehe_cfrnet_wass_image_only))
+            print('PEHE (CFRNet-Wass with demo only):             %.4f' % (sqrt_pehe_cfrnet_wass_demo_only))
+            print('PEHE (DCN-PD with image only):             %.4f' % (sqrt_pehe_dcn_pd_image_only))
+            print('PEHE (DCN-PD with demo only):             %.4f' % (sqrt_pehe_dcn_pd_demo_only))
+            print('PEHE (DONUT with image only):             %.4f' % (sqrt_pehe_donut_image_only))
+            print('PEHE (DONUT with demo only):             %.4f' % (sqrt_pehe_donut_demo_only))
+
+            sqrt_pehe_single_rep['cmnn_image_only'].append(sqrt_pehe_cmnn_image_only)
+            sqrt_pehe_single_rep['cmnn_demo_only'].append(sqrt_pehe_cmnn_demo_only)
+            sqrt_pehe_single_rep['cmnn_image_demo'].append(sqrt_pehe_cmnn_image_demo)
+            sqrt_pehe_single_rep['cfrnet_wass_image_only'].append(sqrt_pehe_cfrnet_wass_image_only)
+            sqrt_pehe_single_rep['cfrnet_wass_demo_only'].append(sqrt_pehe_cfrnet_wass_demo_only)
+            sqrt_pehe_single_rep['dcn_pd_image_only'].append(sqrt_pehe_dcn_pd_image_only)
+            sqrt_pehe_single_rep['dcn_pd_demo_only'].append(sqrt_pehe_dcn_pd_demo_only)
+            sqrt_pehe_single_rep['donut_image_only'].append(sqrt_pehe_donut_image_only)
+            sqrt_pehe_single_rep['donut_demo_only'].append(sqrt_pehe_donut_demo_only)
+
+        for key in sqrt_pehe_single_rep.keys():
+            res['sqrt_PEHE'][key].append(sqrt_pehe_single_rep[key])       
     
     with open('./results/covid_montreal_results.pkl', 'wb') as fp:
         pkl.dump(res, fp)
@@ -829,37 +916,37 @@ def main():
     model_names = ['cmnn_image_only', 'cfrnet_wass_image_only', 'dcn_pd_image_only', 'donut_image_only', 'cmnn_image_demo']
     colors = ['blue', 'red', 'purple', 'magenta', 'green']
     markers = ['.', '^', '*', 's', 'h']
-    labels = ['CMDE', 'CFRNet', 'DCN-PD', 'DONUT', 'CMDE-MUL']
+    labels = ['CMDE-img', 'CFRNet-img', 'DCN-PD-img', 'DONUT-img', 'CMDE-mul']
     for i in range(len(model_names)):
-        axs[0,0].plot(propensity_range, saved_res['sqrt_PEHE'][model_names[i]], lw=1, color=colors[i], 
-                      marker=markers[i], label=labels[i])
+        axs[0,0].errorbar(propensity_range, np.mean(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), 
+                          np.std(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), color=colors[i], marker=markers[i], label=labels[i])
     axs[0,0].set_xlabel('p(T)', fontsize=15)
     axs[0,0].set_ylabel('$\sqrt{PEHE}$', fontsize=15)
     axs[0,0].set_facecolor('#F2F2F2')
     axs[0,0].grid(color='white')
     axs[0,0].legend(fontsize=15)
-    axs[0,0].set_title('$\sqrt{PEHE}$ with only image as input', fontsize=15)
+    axs[0,0].set_title('$\sqrt{PEHE}$ with only image as input for benchmark models', fontsize=15)
 
     model_names = ['cmnn_demo_only', 'cfrnet_wass_demo_only', 'donut_demo_only', 'cmnn_image_demo']
     colors = ['blue', 'red', 'magenta', 'green']
     markers = ['.', '^', 's', 'h']
-    labels = ['CMDE', 'CFRNet', 'DONUT', 'CMDE-MUL']
+    labels = ['CMDE-dem', 'CFRNet-dem', 'DONUT-dem', 'CMDE-mul']
     for i in range(len(model_names)):
-        axs[0,1].plot(propensity_range, saved_res['sqrt_PEHE'][model_names[i]], lw=1, color=colors[i], 
-                      marker=markers[i], label=labels[i])
+        axs[0,1].errorbar(propensity_range, np.mean(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), 
+                          np.std(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), color=colors[i], marker=markers[i], label=labels[i])
     axs[0,1].set_xlabel('p(T)', fontsize=15)
     axs[0,1].set_ylabel('$\sqrt{PEHE}$', fontsize=15)
     axs[0,1].set_facecolor('#F2F2F2')
     axs[0,1].grid(color='white')
     axs[0,1].legend(fontsize=15)
-    axs[0,1].set_title('$\sqrt{PEHE}$ with only demographic information as input', fontsize=15)
+    axs[0,1].set_title('$\sqrt{PEHE}$ with only demographic information as input\n for benchmark models', fontsize=15)
 
     model_names = ['cmnn_image_only', 'cmnn_demo_only', 'cmnn_image_demo']
     colors = ['blue', 'red', 'green']
-    labels = ['Image input', 'Demo input', 'Image + demo input']
+    labels = ['CMDE-img', 'CMDE-dem', 'CMDE-mul']
     for i in range(len(model_names)):
-        axs[1,0].plot(propensity_range, saved_res['sqrt_PEHE'][model_names[i]], lw=1, color=colors[i], 
-                      marker=markers[i], label=labels[i])
+        axs[1,0].errorbar(propensity_range, np.mean(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), 
+                          np.std(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), color=colors[i], marker=markers[i], label=labels[i])
     axs[1,0].set_xlabel('p(T)', fontsize=15)
     axs[1,0].set_ylabel('$\sqrt{PEHE}$', fontsize=15)
     axs[1,0].set_facecolor('#F2F2F2')
