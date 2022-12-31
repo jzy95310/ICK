@@ -3,7 +3,7 @@
 
 import numpy as np
 
-def policy_risk_binary(y_test_pred: np.ndarray, y_test: np.ndarray, t_test: np.ndarray):
+def policy_risk(y_test_pred: np.ndarray, y_test: np.ndarray, t_test: np.ndarray):
     """
     Calculate the policy risk of a causal model with binary treatment
 
@@ -16,7 +16,6 @@ def policy_risk_binary(y_test_pred: np.ndarray, y_test: np.ndarray, t_test: np.n
     """
     assert len(y_test_pred.shape) == 2 and y_test_pred.shape[1] == 2, "y_test_pred must be a 2D array with 2 columns"
     y_test, t_test = y_test.reshape(-1), t_test.reshape(-1)
-    N_Pi0, N_Pi1 = np.sum(1-np.argmax(y_test_pred, axis=1)), np.sum(np.argmax(y_test_pred, axis=1))
     PiT0 = (1-np.argmax(y_test_pred, axis=1)) * (1-t_test)
     PiT1 = np.argmax(y_test_pred, axis=1) * t_test
     return 1.-np.sum(y_test*(PiT0+PiT1))/(np.sum(PiT0)+np.sum(PiT1))
