@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[16]:
-
-
 import sys, random
 sys.path.insert(0, '../../')
 import numpy as np
@@ -20,7 +14,8 @@ from benchmarks.cmgp_modified import CMGP
 from benchmarks.cevae_modified import *
 from benchmarks.x_learner import X_Learner_RF, X_Learner_BART
 from benchmarks.cfrnet import DenseCFRNet
-from benchmarks.train_benchmarks import CFRNetTrainer
+from benchmarks.donut import DenseDONUT
+from benchmarks.train_benchmarks import CFRNetTrainer, DONUTTrainer
 from utils.train import CMICKEnsembleTrainer
 from utils.helpers import *
 from utils.losses import *
@@ -514,6 +509,52 @@ def fit_and_evaluate_cfrnet(input_dim, phi_depth, phi_width, h_depth, h_width, d
     return r_pol_in_sample, r_pol_out_sample
 
 
+# 10. Benchmark 7: DONUT
+def fit_and_evaluate_donut(input_dim, phi_depth, phi_width, h_depth, h_width, data_generators_in_sample, 
+                            data_generators_out_sample, data_in_sample, data_out_sample, lr, treatment_index=1, 
+                           load_weights=False):
+    donut = DenseDONUT(input_dim, phi_depth, phi_width, h_depth, h_width, activation='tanh')
+    if load_weights:
+        donut.load_state_dict(torch.load('./checkpoints/donut_jobs.pt'))
+    else:
+        if not os.path.exists('./checkpoints'):
+            os.makedirs('./checkpoints')
+        torch.save(donut.state_dict(), './checkpoints/donut_jobs.pt')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    optim = 'sgd'
+    optim_params = {
+        'lr': lr, 
+        'momentum': 0.99,
+        'weight_decay': 1e-4
+    }
+    epochs, patience = 1000, 20
+    trainer = DONUTTrainer(
+        model=donut,
+        data_generators=data_generators_in_sample,
+        optim=optim,
+        optim_params=optim_params, 
+        model_save_dir=None,
+        device=device,
+        epochs=epochs,
+        patience=patience, 
+        treatment_index=treatment_index
+    )
+    trainer.train()
+    
+    y_test_pred, y_test_true = trainer.predict()
+    y_test_in_sample, t_test_in_sample = data_in_sample['Y_test'], data_in_sample['T_test']
+    r_pol_in_sample = policy_risk(y_test_pred, y_test_in_sample, t_test_in_sample)
+    
+    trainer.data_generators = data_generators_out_sample
+    y_test_pred, y_test_true = trainer.predict()
+    y_test_out_sample, t_test_out_sample = data_out_sample['Y_test'], data_out_sample['T_test']
+    r_pol_out_sample = policy_risk(y_test_pred, y_test_out_sample, t_test_out_sample)
+    
+    print('Policy risk (DONUT, in-sample):             %.4f' % (r_pol_in_sample))
+    print('Policy risk (DONUT, out-of-sample):             %.4f' % (r_pol_out_sample))
+    return r_pol_in_sample, r_pol_out_sample
+
+
 # Main function
 def main():
     train_ratio, test_ratio, n_iters = 0.56, 0.20, 10
@@ -564,6 +605,11 @@ def main():
             treatment_index=1, load_weights=(i!=0))
         res['in-sample']['r_pol_cfrnet_mmd'].append(r_pol_cfrnet_mmd_in_sample)
         res['out-sample']['r_pol_cfrnet_mmd'].append(r_pol_cfrnet_mmd_out_sample)
+        r_pol_donut_in_sample, r_pol_donut_out_sample = fit_and_evaluate_donut(
+            input_dim, 2, 512, 2, 512, data_generators_in_sample, data_generators_out_sample, 
+            data_in_sample, data_out_sample, lr=1e-4, treatment_index=1, load_weights=(i!=0))
+        res['in-sample']['r_pol_donut'].append(r_pol_donut_in_sample)
+        res['out-sample']['r_pol_donut'].append(r_pol_donut_out_sample)
     try:
         os.makedirs('./results')
     except FileExistsError:

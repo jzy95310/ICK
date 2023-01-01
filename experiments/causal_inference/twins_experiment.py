@@ -20,7 +20,8 @@ from benchmarks.cevae_modified import *
 from benchmarks.ccn import cn_g, weights_init
 from benchmarks.x_learner import X_Learner_RF, X_Learner_BART
 from benchmarks.cfrnet import DenseCFRNet
-from benchmarks.train_benchmarks import CFRNetTrainer
+from benchmarks.donut import DenseDONUT
+from benchmarks.train_benchmarks import CFRNetTrainer, DONUTTrainer
 from utils.train import CMICKEnsembleTrainer
 from utils.losses import *
 from utils.helpers import *
@@ -509,6 +510,51 @@ def fit_and_evaluate_cfrnet(input_dim, phi_depth, phi_width, h_depth, h_width, d
     print('PEHE (CFRNet, out-of-sample):             %.4f' % (pehe_test_out_sample))
     return pehe_test_in_sample, pehe_test_out_sample
 
+def fit_and_evaluate_donut(input_dim, phi_depth, phi_width, h_depth, h_width, data_generators_in_sample, 
+                           data_generators_out_sample, mu_test_in_sample, mu_test_out_sample, lr, 
+                           treatment_index=1, load_weights=False):
+    donut = DenseDONUT(input_dim, phi_depth, phi_width, h_depth, h_width, activation='tanh')
+    if load_weights:
+        donut.load_state_dict(torch.load('./checkpoints/donut_twins.pt'))
+    else:
+        if not os.path.exists('./checkpoints'):
+            os.makedirs('./checkpoints')
+        torch.save(donut.state_dict(), './checkpoints/donut_twins.pt')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    optim = 'sgd'
+    optim_params = {
+        'lr': lr, 
+        'momentum': 0.99,
+        'weight_decay': 1e-4
+    }
+    epochs, patience = 1000, 20
+    trainer = DONUTTrainer(
+        model=donut,
+        data_generators=data_generators_in_sample,
+        optim=optim,
+        optim_params=optim_params, 
+        model_save_dir=None,
+        device=device,
+        epochs=epochs,
+        patience=patience, 
+        treatment_index=treatment_index
+    )
+    trainer.train()
+    
+    y_test_pred, y_test_true = trainer.predict()
+    mu_test_pred = y_test_pred[:,1] - y_test_pred[:,0]
+    pehe_test_in_sample = np.sqrt(np.mean((mu_test_pred - mu_test_in_sample) ** 2))
+    
+    trainer.data_generators = data_generators_out_sample
+    y_test_pred, y_test_true = trainer.predict()
+    mu_test_pred = y_test_pred[range(len(y_test_pred)//2,len(y_test_pred)),1] - \
+                   y_test_pred[range(len(y_test_pred)//2),0]
+    pehe_test_out_sample = np.sqrt(np.mean((mu_test_pred - mu_test_out_sample) ** 2))
+    
+    print('PEHE (DONUT, in-sample):             %.4f' % (pehe_test_in_sample))
+    print('PEHE (DONUT, out-of-sample):             %.4f' % (pehe_test_out_sample))
+    return pehe_test_in_sample, pehe_test_out_sample
+
 def main():
     train_ratio, test_ratio, n_iters = 0.56, 0.20, 10
     res = {'in-sample': defaultdict(list), 'out-sample': defaultdict(list)}
@@ -519,7 +565,7 @@ def main():
         data_generators_out_sample, data_out_sample = load_and_preprocess_data(
             train_ratio, test_ratio, random_seed=i, in_sample=False)
         input_dim = data_in_sample['X_train'].shape[1]
-        # Make sure the ICK-CMGP ensemble has the same starting point for each experimental run
+        # Make sure CMDE has the same starting point for each experimental run
         ensemble = build_cmnn_ensemble(input_dim, load_weights=(i!=0))
         sqrt_pehe_cmnn_in_sample, sqrt_pehe_cmnn_out_sample = fit_and_evaluate_cmnn(
             ensemble, data_generators_in_sample, data_generators_out_sample, data_in_sample['mu_test'], 
@@ -558,6 +604,12 @@ def main():
             treatment_index=1, load_weights=(i!=0))
         res['in-sample']['sqrt_pehe_cfrnet_mmd'].append(sqrt_pehe_cfrnet_mmd_in_sample)
         res['out-sample']['sqrt_pehe_cfrnet_mmd'].append(sqrt_pehe_cfrnet_mmd_out_sample)
+        sqrt_pehe_donut_in_sample, sqrt_pehe_donut_out_sample = fit_and_evaluate_donut(
+            input_dim, 2, 512, 2, 512, data_generators_in_sample, data_generators_out_sample, 
+            data_in_sample['mu_test'], data_out_sample['mu_test'], lr=1e-4, treatment_index=1, 
+            load_weights=(i!=0))
+        res['in-sample']['sqrt_pehe_donut'].append(sqrt_pehe_donut_in_sample)
+        res['out-sample']['sqrt_pehe_donut'].append(sqrt_pehe_donut_out_sample)
     try:
         os.makedirs('./results')
     except FileExistsError:
