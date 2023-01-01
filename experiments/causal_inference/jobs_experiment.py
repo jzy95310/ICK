@@ -540,7 +540,7 @@ def main():
             data_in_sample, data_out_sample)
         res['in-sample']['r_pol_cevae'].append(r_pol_cevae_in_sample)
         res['out-sample']['r_pol_cevae'].append(r_pol_cevae_out_sample)
-        r_pol_ganite_in_sample, r_polr_pol_ganite_out_sample  = fit_and_evaluate_ganite(
+        r_pol_ganite_in_sample, r_pol_ganite_out_sample  = fit_and_evaluate_ganite(
             data_in_sample, data_out_sample)
         res['in-sample']['r_pol_ganite'].append(r_pol_ganite_in_sample)
         res['out-sample']['r_pol_ganite'].append(r_pol_ganite_out_sample)

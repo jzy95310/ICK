@@ -152,7 +152,7 @@ def fit_evaluate_cmnn_ensemble_image_only(input_width, input_height, in_channels
         )
         if load_weights:
             for f in ['f11', 'f12', 'f13']:
-                eval(f).kernels[0].load_state_dict(torch.load('./checkpoints/cmde_img_covid_montreal.pt')['model_'+str(i+1)][f])
+                eval(f).kernels[0].load_state_dict(torch.load('./checkpoints/cmde_img_covid_montreal_imb_prop.pt')['model_'+str(i+1)][f])
         else:
             model_weights = {
                 'f11': f11.kernels[0].state_dict(), 'f12': f12.kernels[0].state_dict(), 'f13': f13.kernels[0].state_dict()
@@ -168,7 +168,7 @@ def fit_evaluate_cmnn_ensemble_image_only(input_width, input_height, in_channels
     if not load_weights:
         if not os.path.exists('./checkpoints'):
             os.makedirs('./checkpoints')
-        torch.save(ensemble_weights, './checkpoints/cmde_img_covid_montreal.pt')
+        torch.save(ensemble_weights, './checkpoints/cmde_img_covid_montreal_imb_prop.pt')
     
     # The index of "T_train" in "data_train" is 0
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -252,7 +252,7 @@ def fit_evaluate_cmnn_ensemble_demo_only(input_dim, data_generators, data, lr, t
         )
         if load_weights:
             for f in ['f11', 'f12', 'f13']:
-                eval(f).kernels[0].load_state_dict(torch.load('./checkpoints/cmde_demo_covid_montreal.pt')['model_'+str(i+1)][f])
+                eval(f).kernels[0].load_state_dict(torch.load('./checkpoints/cmde_demo_covid_montreal_imb_prop.pt')['model_'+str(i+1)][f])
         else:
             model_weights = {
                 'f11': f11.kernels[0].state_dict(), 'f12': f12.kernels[0].state_dict(), 'f13': f13.kernels[0].state_dict()
@@ -268,7 +268,7 @@ def fit_evaluate_cmnn_ensemble_demo_only(input_dim, data_generators, data, lr, t
     if not load_weights:
         if not os.path.exists('./checkpoints'):
             os.makedirs('./checkpoints')
-        torch.save(ensemble_weights, './checkpoints/cmde_demo_covid_montreal.pt')
+        torch.save(ensemble_weights, './checkpoints/cmde_demo_covid_montreal_imb_prop.pt')
     
     # The index of "T_train" in "data_train" is 0
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -382,7 +382,7 @@ def fit_evaluate_cmnn_ensemble_image_demo(input_width, input_height, in_channels
         )
         if load_weights:
             for f in ['f11', 'f12', 'f13']:
-                eval(f).kernels[0].load_state_dict(torch.load('./checkpoints/cmde_img_demo_covid_montreal.pt')['model_'+str(i+1)][f])
+                eval(f).kernels[0].load_state_dict(torch.load('./checkpoints/cmde_img_demo_covid_montreal_imb_prop.pt')['model_'+str(i+1)][f])
         else:
             model_weights = {
                 'f11': f11.kernels[0].state_dict(), 'f12': f12.kernels[0].state_dict(), 'f13': f13.kernels[0].state_dict()
@@ -398,7 +398,7 @@ def fit_evaluate_cmnn_ensemble_image_demo(input_width, input_height, in_channels
     if not load_weights:
         if not os.path.exists('./checkpoints'):
             os.makedirs('./checkpoints')
-        torch.save(ensemble_weights, './checkpoints/cmde_img_demo_covid_montreal.pt')
+        torch.save(ensemble_weights, './checkpoints/cmde_img_demo_covid_montreal_imb_prop.pt')
         
     # The index of "T_train" in "data_train" is 0
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -434,7 +434,7 @@ def fit_evaluate_cmnn_ensemble_image_demo(input_width, input_height, in_channels
 # 3.1 Image + age information
 def fit_evaluate_cmick_ensemble_image_demo(input_width, input_height, in_channels, demo_range, data_generators, 
                                            data, lr, treatment_index=0):
-    alpha11, alpha12, alpha13 = 1.0, 1.0, 0.5
+    alpha11, alpha12, alpha13 = 1.0, 1.0, 0.1
     num_estimators = 10
     
     ensemble, ensemble_weights = [], {}
@@ -556,11 +556,11 @@ def fit_evaluate_cfrnet_image_only(input_width, input_height, in_channels, phi_d
     cfrnet = Conv2DCFRNet(input_width, input_height, in_channels, phi_depth, phi_width, h_depth, h_width,
                           activation='softplus', skip_connection=True)
     if load_weights:
-        cfrnet.load_state_dict(torch.load('./checkpoints/cfrnet_img_covid_montreal.pt'))
+        cfrnet.load_state_dict(torch.load('./checkpoints/cfrnet_img_covid_montreal_imb_prop.pt'))
     else:
         if not os.path.exists('./checkpoints'):
             os.makedirs('./checkpoints')
-        torch.save(cfrnet.state_dict(), './checkpoints/cfrnet_img_covid_montreal.pt')
+        torch.save(cfrnet.state_dict(), './checkpoints/cfrnet_img_covid_montreal_imb_prop.pt')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     optim = 'sgd'
     optim_params = {
@@ -597,11 +597,11 @@ def fit_evaluate_cfrnet_demo_only(input_dim, phi_depth, phi_width, h_depth, h_wi
     cfrnet = DenseCFRNet(input_dim, phi_depth, phi_width, h_depth, h_width, activation='softplus', 
                          skip_connection=True)
     if load_weights:
-        cfrnet.load_state_dict(torch.load('./checkpoints/cfrnet_demo_covid_montreal.pt'))
+        cfrnet.load_state_dict(torch.load('./checkpoints/cfrnet_demo_covid_montreal_imb_prop.pt'))
     else:
         if not os.path.exists('./checkpoints'):
             os.makedirs('./checkpoints')
-        torch.save(cfrnet.state_dict(), './checkpoints/cfrnet_demo_covid_montreal.pt')
+        torch.save(cfrnet.state_dict(), './checkpoints/cfrnet_demo_covid_montreal_imb_prop.pt')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     optim = 'sgd'
     optim_params = {
@@ -649,11 +649,11 @@ def fit_evaluate_dcn_pd_image_only(input_width, input_height, in_channels, share
         skip_connection=True
     )
     if load_weights:
-        dcn_pd.load_state_dict(torch.load('./checkpoints/dcn_pd_img_covid_montreal.pt'))
+        dcn_pd.load_state_dict(torch.load('./checkpoints/dcn_pd_img_covid_montreal_imb_prop.pt'))
     else:
         if not os.path.exists('./checkpoints'):
             os.makedirs('./checkpoints')
-        torch.save(dcn_pd.state_dict(), './checkpoints/dcn_pd_img_covid_montreal.pt')
+        torch.save(dcn_pd.state_dict(), './checkpoints/dcn_pd_img_covid_montreal_imb_prop.pt')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     optim = 'sgd'
     optim_params = {
@@ -696,11 +696,11 @@ def fit_evaluate_dcn_pd_demo_only(input_dim, shared_depth, shared_width, idiosyn
         skip_connection=True
     )
     if load_weights:
-        dcn_pd.load_state_dict(torch.load('./checkpoints/dcn_pd_demo_covid_montreal.pt'))
+        dcn_pd.load_state_dict(torch.load('./checkpoints/dcn_pd_demo_covid_montreal_imb_prop.pt'))
     else:
         if not os.path.exists('./checkpoints'):
             os.makedirs('./checkpoints')
-        torch.save(dcn_pd.state_dict(), './checkpoints/dcn_pd_demo_covid_montreal.pt')
+        torch.save(dcn_pd.state_dict(), './checkpoints/dcn_pd_demo_covid_montreal_imb_prop.pt')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     optim = 'sgd'
     optim_params = {
@@ -737,11 +737,11 @@ def fit_evaluate_donut_image_only(input_width, input_height, in_channels, phi_de
     donut = Conv2DDONUT(input_width, input_height, in_channels, phi_depth, phi_width, h_depth, h_width,
                         activation='softplus', skip_connection=True)
     if load_weights:
-        donut.load_state_dict(torch.load('./checkpoints/donut_img_covid_montreal.pt'))
+        donut.load_state_dict(torch.load('./checkpoints/donut_img_covid_montreal_imb_prop.pt'))
     else:
         if not os.path.exists('./checkpoints'):
             os.makedirs('./checkpoints')
-        torch.save(donut.state_dict(), './checkpoints/donut_img_covid_montreal.pt')
+        torch.save(donut.state_dict(), './checkpoints/donut_img_covid_montreal_imb_prop.pt')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     optim = 'sgd'
     optim_params = {
@@ -777,11 +777,11 @@ def fit_evaluate_donut_demo_only(input_dim, phi_depth, phi_width, h_depth, h_wid
     donut = DenseDONUT(input_dim, phi_depth, phi_width, h_depth, h_width, activation='softplus', 
                        skip_connection=True)
     if load_weights:
-        donut.load_state_dict(torch.load('./checkpoints/donut_demo_covid_montreal.pt'))
+        donut.load_state_dict(torch.load('./checkpoints/donut_demo_covid_montreal_imb_prop.pt'))
     else:
         if not os.path.exists('./checkpoints'):
             os.makedirs('./checkpoints')
-        torch.save(donut.state_dict(), './checkpoints/donut_demo_covid_montreal.pt')
+        torch.save(donut.state_dict(), './checkpoints/donut_demo_covid_montreal_imb_prop.pt')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     optim = 'sgd'
     optim_params = {
@@ -813,11 +813,11 @@ def fit_evaluate_donut_demo_only(input_dim, phi_depth, phi_width, h_depth, h_wid
 
 # Main function
 def main():
-    propensity_range = np.linspace(0.1, 0.9, 9)
-    train_ratio, test_ratio = 0.56, 0.20
-    res = {'propensity_range': propensity_range, 'sqrt_PEHE': defaultdict(list)}
+    propensity_range = np.linspace(0.1, 0.5, 5)
+    train_ratio, test_ratio = 0.40, 0.40
+    res = {'propensity_range': [], 'sqrt_PEHE': defaultdict(list)}
     num_repetitions = 10
-    
+
     for rep in range(num_repetitions):
         print("Repetition: " + str(rep))
         sqrt_pehe_single_rep = defaultdict(list)
@@ -825,6 +825,9 @@ def main():
             # CMNN
             data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, demo_features=[], 
                                                             propensity=propensity_range[i])
+            p_t1x = np.mean(np.concatenate([data['T_train'], data['T_val'], data['T_test']]))
+            if rep == 0:
+                res['propensity_range'].append(p_t1x)
             input_width, input_height, in_channels = data['X_train'].shape[2], data['X_train'].shape[3], data['X_train'].shape[1]
             sqrt_pehe_cmnn_image_only = fit_evaluate_cmnn_ensemble_image_only(input_width, input_height, in_channels, 
                                                                             data_generators, data, lr=5e-5, load_weights=(i!=0))
@@ -890,7 +893,7 @@ def main():
             print('PEHE (DCN-PD with demo only):             %.4f' % (sqrt_pehe_dcn_pd_demo_only))
             print('PEHE (DONUT with image only):             %.4f' % (sqrt_pehe_donut_image_only))
             print('PEHE (DONUT with demo only):             %.4f' % (sqrt_pehe_donut_demo_only))
-
+            
             sqrt_pehe_single_rep['cmnn_image_only'].append(sqrt_pehe_cmnn_image_only)
             sqrt_pehe_single_rep['cmnn_demo_only'].append(sqrt_pehe_cmnn_demo_only)
             sqrt_pehe_single_rep['cmnn_image_demo'].append(sqrt_pehe_cmnn_image_demo)
@@ -900,16 +903,16 @@ def main():
             sqrt_pehe_single_rep['dcn_pd_demo_only'].append(sqrt_pehe_dcn_pd_demo_only)
             sqrt_pehe_single_rep['donut_image_only'].append(sqrt_pehe_donut_image_only)
             sqrt_pehe_single_rep['donut_demo_only'].append(sqrt_pehe_donut_demo_only)
-
+        
         for key in sqrt_pehe_single_rep.keys():
-            res['sqrt_PEHE'][key].append(sqrt_pehe_single_rep[key])       
+            res['sqrt_PEHE'][key].append(sqrt_pehe_single_rep[key])
     
     if not os.path.exists('./results'):
         os.makedirs('./results')
-    with open('./results/covid_montreal_results.pkl', 'wb') as fp:
+    with open('./results/covid_montreal_imb_prop_results.pkl', 'wb') as fp:
         pkl.dump(res, fp)
     
-    with open('./results/covid_montreal_results.pkl', 'rb') as fp:
+    with open('./results/covid_montreal_imb_prop_results.pkl', 'rb') as fp:
         saved_res = pkl.load(fp)
 
     fig, axs = plt.subplots(2, 2, figsize=(15, 14))
@@ -921,9 +924,9 @@ def main():
     labels = ['CMDE-img', 'CFRNet-img', 'DCN-PD-img', 'DONUT-img', 'CMDE-mul']
     for i in range(len(model_names)):
         axs[0,0].errorbar(propensity_range, np.mean(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), 
-                          np.std(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), 
+                          0.5*np.std(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), 
                           color=colors[i], marker=markers[i], label=labels[i], capsize=10)
-    axs[0,0].set_xlabel('p(T)', fontsize=15)
+    axs[0,0].set_xlabel('p(T = 1|x)', fontsize=15)
     axs[0,0].set_ylabel('$\sqrt{PEHE}$', fontsize=15)
     axs[0,0].set_facecolor('#F2F2F2')
     axs[0,0].grid(color='white')
@@ -936,9 +939,9 @@ def main():
     labels = ['CMDE-dem', 'CFRNet-dem', 'DONUT-dem', 'CMDE-mul']
     for i in range(len(model_names)):
         axs[0,1].errorbar(propensity_range, np.mean(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), 
-                          np.std(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), 
+                          0.5*np.std(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), 
                           color=colors[i], marker=markers[i], label=labels[i], capsize=10)
-    axs[0,1].set_xlabel('p(T)', fontsize=15)
+    axs[0,1].set_xlabel('p(T = 1|x)', fontsize=15)
     axs[0,1].set_ylabel('$\sqrt{PEHE}$', fontsize=15)
     axs[0,1].set_facecolor('#F2F2F2')
     axs[0,1].grid(color='white')
@@ -950,9 +953,9 @@ def main():
     labels = ['CMDE-img', 'CMDE-dem', 'CMDE-mul']
     for i in range(len(model_names)):
         axs[1,0].errorbar(propensity_range, np.mean(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), 
-                          np.std(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), 
+                          0.5*np.std(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), 
                           color=colors[i], marker=markers[i], label=labels[i], capsize=10)
-    axs[1,0].set_xlabel('p(T)', fontsize=15)
+    axs[1,0].set_xlabel('p(T = 1|x)', fontsize=15)
     axs[1,0].set_ylabel('$\sqrt{PEHE}$', fontsize=15)
     axs[1,0].set_facecolor('#F2F2F2')
     axs[1,0].grid(color='white')
@@ -961,7 +964,7 @@ def main():
 
     if not os.path.exists('./Figures'):
         os.makedirs('./Figures')
-    plt.savefig('./Figures/covid_montreal_exp_results.pdf', dpi=300, bbox_inches='tight')
+    plt.savefig('./Figures/covid_montreal_exp_imb_prop_results.pdf', dpi=300, bbox_inches='tight')
 
 if __name__ == "__main__":
     main()
