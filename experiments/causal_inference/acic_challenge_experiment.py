@@ -2,7 +2,6 @@ import os, sys, copy, random
 sys.path.insert(0, '../../')
 import numpy as np
 import pandas as pd
-import pickle as pkl
 import matplotlib.pyplot as plt
 from tqdm.notebook import trange
 import time, GPy
@@ -17,7 +16,8 @@ from benchmarks.cmgp_modified import CMGP
 from benchmarks.cevae_modified import *
 from benchmarks.x_learner import X_Learner_RF, X_Learner_BART
 from benchmarks.cfrnet import DenseCFRNet
-from benchmarks.train_benchmarks import CFRNetTrainer
+from benchmarks.donut import DenseDONUT
+from benchmarks.train_benchmarks import CFRNetTrainer, DONUTTrainer
 from ganite import Ganite
 from utils.train import CMICKEnsembleTrainer
 from utils.losses import *
@@ -157,7 +157,7 @@ def build_cmnn_ensemble(input_dim, load_weights=False):
         )
         if load_weights:
             for f in ['f11', 'f12', 'f13', 'f21', 'f22', 'f23']:
-                eval(f).kernels[0].load_state_dict(torch.load('./checkpoints/cmick_acic.pt')['model_'+str(i+1)][f])
+                eval(f).kernels[0].load_state_dict(torch.load('./checkpoints/cmde_acic.pt')['model_'+str(i+1)][f])
         else:
             model_weights = {
                 'f11': f11.kernels[0].state_dict(), 'f12': f12.kernels[0].state_dict(), 'f13': f13.kernels[0].state_dict(), 
@@ -174,7 +174,7 @@ def build_cmnn_ensemble(input_dim, load_weights=False):
     if not load_weights:
         if not os.path.exists('./checkpoints'):
             os.makedirs('./checkpoints')
-        torch.save(ensemble_weights, './checkpoints/cmick_acic.pt')
+        torch.save(ensemble_weights, './checkpoints/cmde_acic.pt')
 
     return ensemble
 
@@ -352,7 +352,7 @@ def fit_and_evaluate_ganite(data):
     train_start = time.time()
     model = Ganite(X_train, T_train, Y_train, num_iterations=500)  # 500 iterations are enough for convergence
     train_time = time.time() - train_start
-    mu_test_pred = model(X_test).numpy()
+    mu_test_pred = model(X_test).cpu().detach().numpy()
     mu_test = data['mu_test']
     pehe_test = np.sqrt(np.mean((mu_test_pred - mu_test) ** 2))
     print('PEHE (GANITE):             %.4f' % (pehe_test))
@@ -422,6 +422,45 @@ def fit_and_evaluate_cfrnet(input_dim, phi_depth, phi_width, h_depth, h_width, d
     
     return pehe_test, train_time
 
+def fit_and_evaluate_donut(input_dim, phi_depth, phi_width, h_depth, h_width, data_generators, 
+                           mu_test, lr, treatment_index=1, load_weights=False):
+    donut = DenseDONUT(input_dim, phi_depth, phi_width, h_depth, h_width)
+    if load_weights:
+        donut.load_state_dict(torch.load('./checkpoints/donut_acic.pt'))
+    else:
+        if not os.path.exists('./checkpoints'):
+            os.makedirs('./checkpoints')
+        torch.save(donut.state_dict(), './checkpoints/donut_acic.pt')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    optim = 'sgd'
+    optim_params = {
+        'lr': lr, 
+        'momentum': 0.99,
+        'weight_decay': 1e-5
+    }
+    epochs, patience = 1000, 10
+    trainer = DONUTTrainer(
+        model=donut,
+        data_generators=data_generators,
+        optim=optim,
+        optim_params=optim_params, 
+        model_save_dir=None,
+        device=device,
+        epochs=epochs,
+        patience=patience, 
+        treatment_index=treatment_index
+    )
+    train_start = time.time()
+    trainer.train()
+    train_time = time.time() - train_start
+    
+    y_test_pred, y_test_true = trainer.predict()
+    mu_test_pred = y_test_pred[:,1] - y_test_pred[:,0]
+    pehe_test = np.sqrt(np.mean((mu_test_pred - mu_test) ** 2))
+    print('PEHE (DONUT):             %.4f' % (pehe_test))
+    
+    return pehe_test, train_time
+
 def main():
     N_train = [100,200,300,400,500,1000,1500,2000]
     N_test = [2000] * len(N_train)
@@ -463,6 +502,11 @@ def main():
         )
         res[N_train[i]]['sqrt_pehe_cfrnet_mmd'] = sqrt_pehe_cfrnet_mmd
         res[N_train[i]]['train_time_cfrnet_mmd'] = train_time_cfrnet_mmd
+        sqrt_pehe_donut, train_time_donut = fit_and_evaluate_donut(
+            input_dim, 2, 512, 2, 512, data_generators, data['mu_test'], lrs[i], load_weights=(i!=0)
+        )
+        res[N_train[i]]['sqrt_pehe_donut'] = sqrt_pehe_donut
+        res[N_train[i]]['train_time_donut'] = train_time_donut
     try:
         os.makedirs('./results')
     except FileExistsError:
@@ -475,10 +519,10 @@ def main():
         res = pkl.load(fp)
     fig, axs = plt.subplots(1,2,figsize=(16,7))
     training_samples = list(res.keys())
-    model_names = ['cmnn', 'cmgp', 'cevae', 'ganite', 'x_learner_rf', 'x_learner_bart', 'cfrnet_wass', 'cfrnet_mmd']
-    colors = ['blue', 'red', 'orange', 'purple', 'magenta', 'brown', 'green', 'olive']
-    markers = ['.', '^', '*', 's', 'D', 'v', 'p', 'h']
-    labels = ['CMDE', 'CMGP', 'CEVAE', 'GANITE', 'X-learner-RF', 'X-learner-BART', 'CFRNet-Wass', 'CFRNet-MMD']
+    model_names = ['cmnn', 'cmgp', 'cevae', 'ganite', 'x_learner_rf', 'x_learner_bart', 'cfrnet_wass', 'cfrnet_mmd', 'donut']
+    colors = ['blue', 'red', 'orange', 'purple', 'magenta', 'brown', 'green', 'olive', 'navy']
+    markers = ['.', '^', '*', 's', 'D', 'v', 'p', 'h', 'H']
+    labels = ['CMDE', 'CMGP', 'CEVAE', 'GANITE', 'X-learner-RF', 'X-learner-BART', 'CFRNet-Wass', 'CFRNet-MMD', 'DONUT']
     for i in range(len(model_names)):
         sqrt_pehe = [x['sqrt_pehe_'+model_names[i]] for x in list(res.values())]
         train_time = [x['train_time_'+model_names[i]] for x in list(res.values())]

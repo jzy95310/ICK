@@ -253,7 +253,7 @@ def fit_and_evaluate_cevae(data_in_sample, data_out_sample):
     lr = 1e-4
     weight_decay = 1e-4
     batch_size = int(data_in_sample['X_train'].shape[0]/8)
-    train_iters = 20
+    train_iters = 20000
     eval_iters = 200
     latent_dim = 20
     n_h = 64
