@@ -7,3 +7,5 @@ from .cevae_modified import *
 from .cmgp_modified import *
 from .x_learner import *
 from .cfrnet import *
+from .dcn_pd import *
+from .donut import *
