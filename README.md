@@ -1,6 +1,6 @@
 # Implicit Composite Kernel (ICK)
 
-This repository contains PyTorch implementation for the paper "Incorporating Prior Knowledge into Neural Networks through an Implicit Composite Kernel" (ICK) and "Estimating Causal Effect using Multi-task Deep Ensemble" (CMDE, currently under review).
+This repository contains PyTorch implementation for the paper "Incorporating Prior Knowledge into Neural Networks through an Implicit Composite Kernel" [1] (ICK) and "Estimating Causal Effect using Multi-task Deep Ensemble" [2] (CMDE, currently under review).
 
 <p align="center">
   <img width="800" alt="Figure_C1" src="https://user-images.githubusercontent.com/45862046/167158033-ff7357c1-5bbd-4a24-9689-f280db1037f2.png">
@@ -12,7 +12,17 @@ This repository contains PyTorch implementation for the paper "Incorporating Pri
 ## Structure of the Repository
 The structure of this repository is given below:
 - `benchmarks`: This module contains the implementation of most of the benchmark models used in ICK and CMDE paper.
-  - `ccn.py`: Causal Collaborating Networks 
+  - `ccn.py`: Collaborating Causal Networks [3]
+  - `cevae_modified.py`: Causal effect inference with deep latent-variable models [4], served as a benchmark in CMDE paper
+  - `cfrnet.py`: Counterfactual Regression [5], served as a benchmark in CMDE paper
+  - `cmgp_modified.py`: Causal Multi-task Gaussian Process [6], served as a benchmark in CMDE paper
+  - `data_generator.py`: Contains the definition of data loaders for generating multimodal data for `joint_nn` models (e.g. CNN-RF) in ICK paper
+  - `dcn_pd.py`: Deep Counterfactual Network with Propensity Dropout [7], served as a benchmark in CMDE paper
+  - `donut.py`: Deep Orthogonal Networks for Unconfounded Treatments [8], served as a benchmark in CMDE paper
+  - `helpers.py`: Contains helper functions for `joint_nn` models (e.g. CNN-RF) in ICK paper
+  - `joint_nn.py`: Contains the definition of joint deep neural network models (e.g. CNN-RF), served as a benchmark in ICK paper
+  - `train_benchmarks.py`: Contains trainer classes for fitting benchmark models in this directory
+  - `x_learner.py`: X-learner [9] where the base learner is either random forest (RF) or Bayesian Additive Regression Trees (BART) [10], served as a benchmark in CMDE paper
 - `data`: This directory contains all the datasets used for conducting experiments in CMDE paper.
 - `experiments`: This directory contains all the scripts needed for replicating the experiments in ICK (see `synthetic_data` and `remote_sensing_separable_kernel`) and CMDE (see `causal_inference`) paper.
 - `kernels`: This module contains the implementation details of Nystrom approximation (ICK-y) and Random Fourier Features (ICK-r) as well as the definition of commonly used neural network (NN) architectures and kernel functions.
@@ -46,3 +56,15 @@ If you publish any materials using this repository, please include the following
   year={2022}
 }
 ```
+
+## References
+[1]. Jiang, Ziyang, Tongshu Zheng, and David Carlson. "Incorporating Prior Knowledge into Neural Networks through an Implicit Composite Kernel." arXiv preprint arXiv:2205.07384 (2022).
+[2]. 
+[3]. Zhou, Tianhui, William E. Carson IV, and David Carlson. "Estimating potential outcome distributions with collaborating causal networks." arXiv preprint arXiv:2110.01664 (2021).
+[4]. Louizos, Christos, et al. "Causal effect inference with deep latent-variable models." Advances in neural information processing systems 30 (2017).
+[5]. Shalit, Uri, Fredrik D. Johansson, and David Sontag. "Estimating individual treatment effect: generalization bounds and algorithms." International Conference on Machine Learning. PMLR, 2017.
+[6]. Alaa, Ahmed M., and Mihaela Van Der Schaar. "Bayesian inference of individualized treatment effects using multi-task gaussian processes." Advances in neural information processing systems 30 (2017).
+[7]. Alaa, Ahmed M., Michael Weisz, and Mihaela Van Der Schaar. "Deep counterfactual networks with propensity-dropout." arXiv preprint arXiv:1706.05966 (2017).
+[8]. Hatt, Tobias, and Stefan Feuerriegel. "Estimating average treatment effects via orthogonal regularization." Proceedings of the 30th ACM International Conference on Information & Knowledge Management. 2021.
+[9]. Künzel, Sören R., et al. "Metalearners for estimating heterogeneous treatment effects using machine learning." Proceedings of the national academy of sciences 116.10 (2019): 4156-4165.
+[10]. Hill, Jennifer L. "Bayesian nonparametric modeling for causal inference." Journal of Computational and Graphical Statistics 20.1 (2011): 217-240.
