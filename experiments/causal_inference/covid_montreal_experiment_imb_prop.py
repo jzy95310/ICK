@@ -35,7 +35,7 @@ torch.backends.cudnn.benchmark = False
 
 # 1. Load and preprocess the images and demographic infomation
 def load_and_preprocess_data(train_ratio, test_ratio, random_state, include_images=True, demo_features=None, 
-                             propensity=0.1):
+                             propensity=0.1, batch_size=8):
     def process_img(img, resize=(200,200), mode='L'):
         # Convert the image to black-white and resize
         assert isinstance(resize, tuple) and len(resize) == 2
@@ -89,7 +89,7 @@ def load_and_preprocess_data(train_ratio, test_ratio, random_state, include_imag
         x_train=data_train, y_train=Y_train, 
         x_val=data_val, y_val=Y_val,
         x_test=data_test, y_test=Y_test, 
-        train_batch_size=8, val_batch_size=8, test_batch_size=8, 
+        train_batch_size=batch_size, val_batch_size=batch_size, test_batch_size=batch_size, 
         drop_last=False
     )
     del X_train, X_val, X_test, D_train, D_val, D_test, T_train, T_val, T_test, Y_train, Y_val, Y_test
@@ -149,6 +149,11 @@ def fit_evaluate_cmnn_ensemble_image_only(input_width, input_height, in_channels
                     'skip_connection': True
                 }
             }
+        )
+        baselearner = CMICK(
+            control_components=[f11], treatment_components=[f12], shared_components=[f13],
+            control_coeffs=[alpha11], treatment_coeffs=[alpha12], shared_coeffs=[alpha13], 
+            coeff_trainable=True
         )
         if load_weights:
             baselearner.load_state_dict(torch.load('./checkpoints/cmde_img_covid_montreal_imb_prop.pt')['model_'+str(i+1)])
@@ -291,7 +296,7 @@ def fit_evaluate_cmnn_ensemble_demo_only(input_dim, data_generators, data, lr, t
 def fit_evaluate_cmnn_ensemble_image_demo(input_width, input_height, in_channels, demo_dim, data_generators, 
                                           data, lr, treatment_index=0, load_weights=False):
     alpha11, alpha12, alpha13 = 1.0, 1.0, 0.5
-    num_estimators = 10
+    num_estimators = 5
     
     ensemble, ensemble_weights = [], {}
     for i in range(num_estimators):
@@ -907,22 +912,21 @@ def main():
         sqrt_pehe_single_rep = defaultdict(list)
         for i in range(len(propensity_range)):
             # CMNN
-#             data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, demo_features=[], 
-#                                                             propensity=propensity_range[i])
-#             p_t1x = np.mean(np.concatenate([data['T_train'], data['T_val'], data['T_test']]))
-#             if rep == 0:
-#                 res['propensity_range'].append(p_t1x)
-#             input_width, input_height, in_channels = data['X_train'].shape[2], data['X_train'].shape[3], data['X_train'].shape[1]
-#             sqrt_pehe_cmnn_image_only = fit_evaluate_cmnn_ensemble_image_only(input_width, input_height, in_channels, 
-#                                                                             data_generators, data, lr=5e-5, load_weights=(i!=0))
-#             data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, include_images=False, 
-#                                                             propensity=propensity_range[i])
-#             demo_input_dim = data['D_train'].shape[1]
-#             sqrt_pehe_cmnn_demo_only = fit_evaluate_cmnn_ensemble_demo_only(demo_input_dim, data_generators, data, lr=5e-4, 
-#                                                                             load_weights=(i!=0))
+            data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, demo_features=[], 
+                                                            propensity=propensity_range[i])
+            p_t1x = np.mean(np.concatenate([data['T_train'], data['T_val'], data['T_test']]))
+            if rep == 0:
+                res['propensity_range'].append(p_t1x)
+            input_width, input_height, in_channels = data['X_train'].shape[2], data['X_train'].shape[3], data['X_train'].shape[1]
+            sqrt_pehe_cmnn_image_only = fit_evaluate_cmnn_ensemble_image_only(input_width, input_height, in_channels, 
+                                                                            data_generators, data, lr=5e-5, load_weights=(i!=0))
+            data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, include_images=False, 
+                                                            propensity=propensity_range[i])
+            demo_input_dim = data['D_train'].shape[1]
+            sqrt_pehe_cmnn_demo_only = fit_evaluate_cmnn_ensemble_demo_only(demo_input_dim, data_generators, data, lr=5e-4, 
+                                                                            load_weights=(i!=0))
             data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1,
                                                             propensity=propensity_range[i])
-            input_width, input_height, in_channels = data['X_train'].shape[2], data['X_train'].shape[3], data['X_train'].shape[1]
             demo_input_dim = data['D_train'].shape[1]
             sqrt_pehe_cmnn_image_demo = fit_evaluate_cmnn_ensemble_image_demo(input_width, input_height, in_channels, 
                                                                               demo_input_dim, data_generators, data, 

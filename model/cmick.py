@@ -1,7 +1,4 @@
-# ick_cmgp.py: a file containing the definition of a variant of Implicit Composite Kernel (ICK) model that simulates the
-# behavior of the Causal Multi-task Gaussian Process (CMGP) model in the paper "Bayesian Inference of Individualized Treatment
-# Effects using Multi-task Gaussian Processes" by Ahmed M. Alaa and Mihaela van der Schaar
-# arXiv: https://arxiv.org/abs/1704.02801
+# cmick.py: a file containing the definition of a Causal Multi-task Implicit Composite Kernel (CMICK) model
 # SEE LICENSE STATEMENT AT THE END OF THE FILE
 
 from .ick import ICK
