@@ -897,7 +897,7 @@ def fit_evaluate_donut_demo_only(input_dim, phi_depth, phi_width, h_depth, h_wid
 
 # Main function
 def main():
-    propensity_range = np.linspace(0.1, 0.9, 9)
+    propensity_range = np.linspace(0.1, 0.5, 5)
     train_ratio, test_ratio = 0.56, 0.20
     res = {'propensity_range': propensity_range, 'sqrt_PEHE': defaultdict(list)}
     num_repetitions = 10
