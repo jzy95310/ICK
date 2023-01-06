@@ -86,6 +86,59 @@ class CMICK(nn.Module):
         output = torch.stack([control_output + shared_output, treatment_output + shared_output], dim=1)
         return torch.sigmoid(output) if self.output_binary else output
 
+class AdditiveCMICK(nn.Module):
+    """
+    Class definition of the Additive Causal Multi-task Implicit Composite Kernel (CMICK)
+
+    Arguments
+    --------------
+    components: List[CMICK], a list of CMICK objects to be added together
+    component_assignment: List[List[int]], a list of lists of integers, where each list of integers specifies the 
+        assignment of each input modality to each CMICK component. For example, say we have 3 components: f1, f2, and f3. 
+        Let x[0] be the first input modality and x[1] be the second input modality. If component_assignment = 
+        [[0],[1],[0,1]], this means the final output will be computed as:
+        output = a1 * f1(x[0]) + a2 * f2(x[1]) + a3 * f3(x[0], x[1])
+    coeffs: List[float], a list of coefficients for each CMICK component. If None, all coefficients will be set to 1.0
+    coeff_trainable: bool, whether the coefficients are trainable parameters
+    output_binary: bool, whether the output should be binary (i.e. sigmoid applied to the output)
+    """
+    def __init__(self, components: List[CMICK], component_assignment: List[List[int]], coeffs: List[float] = None, coeff_trainable: bool = False, 
+                 output_binary: bool = False) -> None:
+        super(AdditiveCMICK, self).__init__()
+        self.components: nn.ModuleList = nn.ModuleList(components)
+        self.component_assignment: List[List[int]] = component_assignment
+        self.coeffs: List[float] = [1.0] * len(components) if coeffs is None else coeffs
+        self.coeff_trainable: bool = coeff_trainable
+        self.output_binary: bool = output_binary
+        self._validate_inputs()
+        if self.coeff_trainable:
+            self._register_params()
+    
+    def _validate_inputs(self) -> None:
+        """
+        Validate the inputs to Additive CMICK
+        """
+        assert all([isinstance(x, CMICK) for x in self.components]), "components must be a list of CMICK objects."
+        assert all([isinstance(x, list) for x in self.component_assignment]), "component_assignment must be a list of lists."
+        assert all([isinstance(x, float) for x in self.coeffs]), "coeffs must be a list of floats."
+    
+    def _register_params(self) -> None:
+        """
+        Register the coefficients as trainable parameters
+        """
+        for i in range(len(self.coeffs)):
+            setattr(self, "coeff_{}".format(i+1), nn.Parameter(torch.tensor(self.coeffs[i], requires_grad=True)))
+    
+    def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
+        """
+        Forward pass of Additive CMICK
+        """
+        if self.coeff_trainable:
+            output = sum([getattr(self, "coeff_{}".format(i+1)) * f([x[j] for j in self.component_assignment[i]]) for i, f in enumerate(self.components)])
+        else:
+            output = sum([a * f([x[j] for j in self.component_assignment[i]]) for a, i, f in zip(self.coeffs, range(len(self.components)), self.components)])
+        return torch.sigmoid(output) if self.output_binary else output
+
 # ########################################################################################
 # MIT License
 

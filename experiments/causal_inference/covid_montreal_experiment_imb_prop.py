@@ -14,7 +14,7 @@ from torchvision.transforms import Compose, ToTensor, Resize
 from kernels.nn import ImplicitConvNet2DKernel
 from kernels.kernel_fn import linear_kernel_nys, sq_exp_kernel_nys
 from model.ick import ICK
-from model.cmick import CMICK
+from model.cmick import CMICK, AdditiveCMICK
 from benchmarks.cfrnet import DenseCFRNet, Conv2DCFRNet
 from benchmarks.dcn_pd import DenseDCNPD, Conv2DDCNPD
 from benchmarks.donut import DenseDONUT, Conv2DDONUT
@@ -151,20 +151,11 @@ def fit_evaluate_cmnn_ensemble_image_only(input_width, input_height, in_channels
             }
         )
         if load_weights:
-            for f in ['f11', 'f12', 'f13']:
-                eval(f).kernels[0].load_state_dict(torch.load('./checkpoints/cmde_img_covid_montreal_imb_prop.pt')['model_'+str(i+1)][f])
+            baselearner.load_state_dict(torch.load('./checkpoints/cmde_img_covid_montreal_imb_prop.pt')['model_'+str(i+1)])
         else:
-            model_weights = {
-                'f11': f11.kernels[0].state_dict(), 'f12': f12.kernels[0].state_dict(), 'f13': f13.kernels[0].state_dict()
-            }
-            ensemble_weights['model_'+str(i+1)] = model_weights
-        baselearner = CMICK(
-            control_components=[f11], treatment_components=[f12], shared_components=[f13],
-            control_coeffs=[alpha11], treatment_coeffs=[alpha12], shared_coeffs=[alpha13], 
-            coeff_trainable=True
-        )
+            ensemble_weights['model_'+str(i+1)] = baselearner.state_dict()
         ensemble.append(baselearner)
-    
+
     if not load_weights:
         if not os.path.exists('./checkpoints'):
             os.makedirs('./checkpoints')
@@ -250,21 +241,17 @@ def fit_evaluate_cmnn_ensemble_demo_only(input_dim, data_generators, data, lr, t
                 }
             }
         )
-        if load_weights:
-            for f in ['f11', 'f12', 'f13']:
-                eval(f).kernels[0].load_state_dict(torch.load('./checkpoints/cmde_demo_covid_montreal_imb_prop.pt')['model_'+str(i+1)][f])
-        else:
-            model_weights = {
-                'f11': f11.kernels[0].state_dict(), 'f12': f12.kernels[0].state_dict(), 'f13': f13.kernels[0].state_dict()
-            }
-            ensemble_weights['model_'+str(i+1)] = model_weights
         baselearner = CMICK(
             control_components=[f11], treatment_components=[f12], shared_components=[f13],
             control_coeffs=[alpha11], treatment_coeffs=[alpha12], shared_coeffs=[alpha13], 
             coeff_trainable=True
         )
+        if load_weights:
+            baselearner.load_state_dict(torch.load('./checkpoints/cmde_demo_covid_montreal_imb_prop.pt')['model_'+str(i+1)])
+        else:
+            ensemble_weights['model_'+str(i+1)] = baselearner.state_dict()
         ensemble.append(baselearner)
-    
+
     if not load_weights:
         if not os.path.exists('./checkpoints'):
             os.makedirs('./checkpoints')
@@ -308,6 +295,103 @@ def fit_evaluate_cmnn_ensemble_image_demo(input_width, input_height, in_channels
     
     ensemble, ensemble_weights = [], {}
     for i in range(num_estimators):
+        f11 = ICK(
+            kernel_assignment=['ImplicitConvNet2DKernel'],
+            kernel_params={
+                'ImplicitConvNet2DKernel':{
+                    'input_width': input_width,
+                    'input_height': input_height, 
+                    'in_channels': in_channels,
+                    'num_intermediate_channels': 64, 
+                    'latent_feature_dim': 512, 
+                    'num_blocks': 1, 
+                    'activation': 'softplus', 
+                    'skip_connection': True
+                }
+            }
+        )
+        f12 = ICK(
+            kernel_assignment=['ImplicitConvNet2DKernel'],
+            kernel_params={
+                'ImplicitConvNet2DKernel':{
+                    'input_width': input_width,
+                    'input_height': input_height, 
+                    'in_channels': in_channels,
+                    'num_intermediate_channels': 64, 
+                    'latent_feature_dim': 512, 
+                    'num_blocks': 1, 
+                    'activation': 'softplus', 
+                    'skip_connection': True
+                }
+            }
+        )
+        f13 = ICK(
+            kernel_assignment=['ImplicitConvNet2DKernel'],
+            kernel_params={
+                'ImplicitConvNet2DKernel':{
+                    'input_width': input_width,
+                    'input_height': input_height, 
+                    'in_channels': in_channels,
+                    'num_intermediate_channels': 64, 
+                    'latent_feature_dim': 512, 
+                    'num_blocks': 1, 
+                    'activation': 'softplus', 
+                    'skip_connection': True
+                }
+            }
+        )
+        g1 = CMICK(
+            control_components=[f11], treatment_components=[f12], shared_components=[f13],
+            control_coeffs=[alpha11], treatment_coeffs=[alpha12], shared_coeffs=[alpha13], 
+            coeff_trainable=True
+        )
+        f11 = ICK(
+            kernel_assignment=['ImplicitDenseNetKernel'],
+            kernel_params={
+                'ImplicitDenseNetKernel':{
+                    'input_dim': demo_dim, 
+                    'latent_feature_dim': 128, 
+                    'num_blocks': 1, 
+                    'num_layers_per_block': 1,
+                    'num_units': 512,
+                    'activation': 'softplus', 
+                    'skip_connection': True
+                }
+            }
+        )
+        f12 = ICK(
+            kernel_assignment=['ImplicitDenseNetKernel'],
+            kernel_params={
+                'ImplicitDenseNetKernel':{
+                    'input_dim': demo_dim, 
+                    'latent_feature_dim': 128, 
+                    'num_blocks': 1, 
+                    'num_layers_per_block': 1,
+                    'num_units': 512,
+                    'activation': 'softplus', 
+                    'skip_connection': True
+                }
+            }
+        )
+        f13 = ICK(
+            kernel_assignment=['ImplicitDenseNetKernel'],
+            kernel_params={
+                'ImplicitDenseNetKernel':{
+                    'input_dim': demo_dim, 
+                    'latent_feature_dim': 128, 
+                    'num_blocks': 1, 
+                    'num_layers_per_block': 1,
+                    'num_units': 512,
+                    'activation': 'softplus', 
+                    'skip_connection': True
+                }
+            }
+        )
+        g2 = CMICK(
+            control_components=[f11], treatment_components=[f12], shared_components=[f13],
+            control_coeffs=[alpha11], treatment_coeffs=[alpha12], shared_coeffs=[alpha13], 
+            coeff_trainable=True
+        )
         f11 = ICK(
             kernel_assignment=['ImplicitConvNet2DKernel','ImplicitDenseNetKernel'],
             kernel_params={
@@ -380,21 +464,21 @@ def fit_evaluate_cmnn_ensemble_image_demo(input_width, input_height, in_channels
                 }
             }
         )
-        if load_weights:
-            for f in ['f11', 'f12', 'f13']:
-                eval(f).kernels[0].load_state_dict(torch.load('./checkpoints/cmde_img_demo_covid_montreal_imb_prop.pt')['model_'+str(i+1)][f])
-        else:
-            model_weights = {
-                'f11': f11.kernels[0].state_dict(), 'f12': f12.kernels[0].state_dict(), 'f13': f13.kernels[0].state_dict()
-            }
-            ensemble_weights['model_'+str(i+1)] = model_weights
-        baselearner = CMICK(
+        g3 = CMICK(
             control_components=[f11], treatment_components=[f12], shared_components=[f13],
             control_coeffs=[alpha11], treatment_coeffs=[alpha12], shared_coeffs=[alpha13], 
             coeff_trainable=True
         )
+        baselearner = AdditiveCMICK(
+            components=[g1,g2,g3], 
+            component_assignment=[[0],[1],[0,1]]
+        )
+        if load_weights:
+            baselearner.load_state_dict(torch.load('./checkpoints/cmde_img_demo_covid_montreal_imb_prop.pt')['model_'+str(i+1)])
+        else:
+            ensemble_weights['model_'+str(i+1)] = baselearner.state_dict()
         ensemble.append(baselearner)
-    
+
     if not load_weights:
         if not os.path.exists('./checkpoints'):
             os.makedirs('./checkpoints')
@@ -823,25 +907,26 @@ def main():
         sqrt_pehe_single_rep = defaultdict(list)
         for i in range(len(propensity_range)):
             # CMNN
-            data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, demo_features=[], 
-                                                            propensity=propensity_range[i])
-            p_t1x = np.mean(np.concatenate([data['T_train'], data['T_val'], data['T_test']]))
-            if rep == 0:
-                res['propensity_range'].append(p_t1x)
-            input_width, input_height, in_channels = data['X_train'].shape[2], data['X_train'].shape[3], data['X_train'].shape[1]
-            sqrt_pehe_cmnn_image_only = fit_evaluate_cmnn_ensemble_image_only(input_width, input_height, in_channels, 
-                                                                            data_generators, data, lr=5e-5, load_weights=(i!=0))
-            data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, include_images=False, 
-                                                            propensity=propensity_range[i])
-            demo_input_dim = data['D_train'].shape[1]
-            sqrt_pehe_cmnn_demo_only = fit_evaluate_cmnn_ensemble_demo_only(demo_input_dim, data_generators, data, lr=5e-4, 
-                                                                            load_weights=(i!=0))
+#             data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, demo_features=[], 
+#                                                             propensity=propensity_range[i])
+#             p_t1x = np.mean(np.concatenate([data['T_train'], data['T_val'], data['T_test']]))
+#             if rep == 0:
+#                 res['propensity_range'].append(p_t1x)
+#             input_width, input_height, in_channels = data['X_train'].shape[2], data['X_train'].shape[3], data['X_train'].shape[1]
+#             sqrt_pehe_cmnn_image_only = fit_evaluate_cmnn_ensemble_image_only(input_width, input_height, in_channels, 
+#                                                                             data_generators, data, lr=5e-5, load_weights=(i!=0))
+#             data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, include_images=False, 
+#                                                             propensity=propensity_range[i])
+#             demo_input_dim = data['D_train'].shape[1]
+#             sqrt_pehe_cmnn_demo_only = fit_evaluate_cmnn_ensemble_demo_only(demo_input_dim, data_generators, data, lr=5e-4, 
+#                                                                             load_weights=(i!=0))
             data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1,
                                                             propensity=propensity_range[i])
+            input_width, input_height, in_channels = data['X_train'].shape[2], data['X_train'].shape[3], data['X_train'].shape[1]
             demo_input_dim = data['D_train'].shape[1]
             sqrt_pehe_cmnn_image_demo = fit_evaluate_cmnn_ensemble_image_demo(input_width, input_height, in_channels, 
-                                                                            demo_input_dim, data_generators, data, 
-                                                                            lr=1e-4, load_weights=(i!=0))
+                                                                              demo_input_dim, data_generators, data, 
+                                                                              lr=1e-4, load_weights=(i!=0))
 
     #         # CMICK
     #         data_generators, data = load_and_preprocess_data(train_ratio, test_ratio, random_state=1, demo_features=['age'])

@@ -452,7 +452,7 @@ def fit_and_evaluate_ganite(data_in_sample, data_out_sample):
     X_train, T_train, Y_train, X_test = data_in_sample['X_train'], data_in_sample['T_train'], \
                                         data_in_sample['Y_train'], data_in_sample['X_test_original']
     Y_test = data_in_sample['Y_test_original']
-    model = Ganite(X_train, T_train, Y_train, num_iterations=500)
+    model = Ganite(X_train, T_train, Y_train, dim_hidden=8, alpha=2, beta=2, minibatch_size=128, depth=5)
     pred_in_sample = model(X_test).cpu().detach().numpy()
     pehe_test_in_sample = sqrt_PEHE_with_diff(Y_test, pred_in_sample)
     
