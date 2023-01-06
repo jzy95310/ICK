@@ -9,6 +9,13 @@ This repository contains PyTorch implementation for the paper "Incorporating Pri
   <em>An illustration of ICK Framework</em>
 </p>
 
+<p align="center">
+  <img width="603" alt="Figure_1" src="https://user-images.githubusercontent.com/45862046/211047479-94c50d8d-0044-4486-92c3-338c060e9464.png">
+</p>
+<p align="center">
+  <em>An illustration of CMDE Framework</em>
+</p>
+
 ## Structure of the Repository
 The structure of this repository is given below:
 - `benchmarks`: This module contains the implementation of most of the benchmark models used in ICK and CMDE paper.
