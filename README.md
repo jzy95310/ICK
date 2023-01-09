@@ -50,8 +50,8 @@ The structure of this repository is given below:
   - `metrics.py`: Contains metrics for model evaluation in causal inference (i.e. CMDE and other benchmark models)
   - `train.py`: Contains trainer classes for fitting ICK (or ICK ensemble) and making predictions
 
-## Tutorial
-Please refer to the notebook `tutorial_1d_regression.ipynb` for a detailed tutorial of fitting ICK to multimodal data in a simple regression task. 
+## Tutorials
+Please refer to the notebook `tutorial_1d_regression.ipynb` for a detailed tutorial of fitting ICK to multimodal data in a simple regression task and the notebook `experiments/causal_inference/synthetic_data_experiment.ipynb` for an example of fitting CMDE to a synthetic toy dataset in causal inference setting.
 
 ## Citation
 If you publish any materials using this repository, please include the following Bibtex citation:
