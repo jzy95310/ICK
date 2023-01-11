@@ -296,108 +296,11 @@ def fit_evaluate_cmnn_ensemble_demo_only(input_dim, data_generators, data, lr, t
 def fit_evaluate_cmnn_ensemble_image_demo(input_width, input_height, in_channels, demo_dim, data_generators, 
                                           data, lr, treatment_index=0, load_weights=False):
     alpha11, alpha12, alpha13 = 1.0, 1.0, 0.5
-    num_estimators = 5
+    num_estimators = 10
     
     ensemble, ensemble_weights = [], {}
     for i in range(num_estimators):
         f11 = ICK(
-            kernel_assignment=['ImplicitConvNet2DKernel'],
-            kernel_params={
-                'ImplicitConvNet2DKernel':{
-                    'input_width': input_width,
-                    'input_height': input_height, 
-                    'in_channels': in_channels,
-                    'num_intermediate_channels': 64, 
-                    'latent_feature_dim': 512, 
-                    'num_blocks': 1, 
-                    'activation': 'softplus', 
-                    'skip_connection': True
-                }
-            }
-        )
-        f12 = ICK(
-            kernel_assignment=['ImplicitConvNet2DKernel'],
-            kernel_params={
-                'ImplicitConvNet2DKernel':{
-                    'input_width': input_width,
-                    'input_height': input_height, 
-                    'in_channels': in_channels,
-                    'num_intermediate_channels': 64, 
-                    'latent_feature_dim': 512, 
-                    'num_blocks': 1, 
-                    'activation': 'softplus', 
-                    'skip_connection': True
-                }
-            }
-        )
-        f13 = ICK(
-            kernel_assignment=['ImplicitConvNet2DKernel'],
-            kernel_params={
-                'ImplicitConvNet2DKernel':{
-                    'input_width': input_width,
-                    'input_height': input_height, 
-                    'in_channels': in_channels,
-                    'num_intermediate_channels': 64, 
-                    'latent_feature_dim': 512, 
-                    'num_blocks': 1, 
-                    'activation': 'softplus', 
-                    'skip_connection': True
-                }
-            }
-        )
-        g1 = CMICK(
-            control_components=[f11], treatment_components=[f12], shared_components=[f13],
-            control_coeffs=[alpha11], treatment_coeffs=[alpha12], shared_coeffs=[alpha13], 
-            coeff_trainable=True
-        )
-        f11 = ICK(
-            kernel_assignment=['ImplicitDenseNetKernel'],
-            kernel_params={
-                'ImplicitDenseNetKernel':{
-                    'input_dim': demo_dim, 
-                    'latent_feature_dim': 128, 
-                    'num_blocks': 1, 
-                    'num_layers_per_block': 1,
-                    'num_units': 512,
-                    'activation': 'softplus', 
-                    'skip_connection': True
-                }
-            }
-        )
-        f12 = ICK(
-            kernel_assignment=['ImplicitDenseNetKernel'],
-            kernel_params={
-                'ImplicitDenseNetKernel':{
-                    'input_dim': demo_dim, 
-                    'latent_feature_dim': 128, 
-                    'num_blocks': 1, 
-                    'num_layers_per_block': 1,
-                    'num_units': 512,
-                    'activation': 'softplus', 
-                    'skip_connection': True
-                }
-            }
-        )
-        f13 = ICK(
-            kernel_assignment=['ImplicitDenseNetKernel'],
-            kernel_params={
-                'ImplicitDenseNetKernel':{
-                    'input_dim': demo_dim, 
-                    'latent_feature_dim': 128, 
-                    'num_blocks': 1, 
-                    'num_layers_per_block': 1,
-                    'num_units': 512,
-                    'activation': 'softplus', 
-                    'skip_connection': True
-                }
-            }
-        )
-        g2 = CMICK(
-            control_components=[f11], treatment_components=[f12], shared_components=[f13],
-            control_coeffs=[alpha11], treatment_coeffs=[alpha12], shared_coeffs=[alpha13], 
-            coeff_trainable=True
-        )
-        f11 = ICK(
             kernel_assignment=['ImplicitConvNet2DKernel','ImplicitDenseNetKernel'],
             kernel_params={
                 'ImplicitConvNet2DKernel':{
@@ -469,14 +372,10 @@ def fit_evaluate_cmnn_ensemble_image_demo(input_width, input_height, in_channels
                 }
             }
         )
-        g3 = CMICK(
+        baselearner = CMICK(
             control_components=[f11], treatment_components=[f12], shared_components=[f13],
             control_coeffs=[alpha11], treatment_coeffs=[alpha12], shared_coeffs=[alpha13], 
             coeff_trainable=True
-        )
-        baselearner = AdditiveCMICK(
-            components=[g1,g2,g3], 
-            component_assignment=[[0],[1],[0,1]]
         )
         if load_weights:
             baselearner.load_state_dict(torch.load('./checkpoints/cmde_img_demo_covid_montreal_imb_prop.pt')['model_'+str(i+1)])
