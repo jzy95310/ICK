@@ -51,7 +51,39 @@ The structure of this repository is given below:
   - `train.py`: Contains trainer classes for fitting ICK (or ICK ensemble) and making predictions
 
 ## Tutorials
-Please refer to the notebook `tutorial_1d_regression.ipynb` for a detailed tutorial of fitting ICK to multimodal data in a simple regression task and the notebook `experiments/causal_inference/synthetic_data_experiment.ipynb` for an example of fitting CMDE to a synthetic toy dataset in causal inference setting.
+### Training and evaluation of ICK
+ICK is typically used to fit multi-modal data (e.g. a dataset containing both images and tabular data). To construct an ICK model, we first need to determine the types of kernels we want to use for each modality. Say we want to one kernel implied by a convolutional neural network to process images widh dimension 3*100*100 and periodic kernel mapped by Nystrom approximation to process the corresponding 1-dimensional timestamp data, then we can define our kernels and ICK model as follows:
+```
+from model import ICK
+from kernels.kernel_fn import periodic_kernel_nys
+
+kernel_assignment = ['ImplicitConvNet2DKernel', 'ImplicitNystromKernel']
+kernel_params = {
+    'ImplicitConvNet2DKernel':{
+        'input_width': 100,
+        'input_height': 100, 
+        'in_channels': 3, 
+        'latent_feature_dim': 16,
+        'num_blocks': 2, 
+        'num_intermediate_channels': 64, 
+        'kernel_size': 3, 
+        'stride': 1
+    }, 
+    'ImplicitNystromKernel': {
+        'kernel_func': periodic_kernel_nys, 
+        'params': ['std','period','lengthscale','noise'], 
+        'vals': [1., 365., 0.5, 0.5], 
+        'trainable': [True,True,True,True], 
+        'alpha': 1e-5, 
+        'num_inducing_points': 16, 
+        'nys_space': [[0.,365.]]
+    }
+}
+model = ICK(kernel_assignment, kernel_params)
+```
+Note that here we also specify the architecture and periodic kernel parameters through the argument `kernel_params`, including the depth (`num_blocks`) and width (`num_intermediate_channels`) of the convolutional network, the filter size (`kernel_size`), and the initial values of those trainable parameters in the periodic kernel including std, period, length scale, and a white noise term. After constructing the model, we can use the `Trainer` classes in `utils.train` to fit it. Please refer to the notebook `tutorial_1d_regression.ipynb` for a more detailed tutorial of fitting ICK (as well as other variants of ICK such as variational ICK, ICK ensemble, etc.) to multi-modal data in a simple regression task. <br />
+
+Please refer to the notebook `experiments/causal_inference/synthetic_data_experiment.ipynb` for an example of fitting CMDE to a synthetic toy dataset in causal inference setting.
 
 ## Citation
 If you publish any materials using this repository, please include the following Bibtex citation:
