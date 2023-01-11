@@ -52,7 +52,7 @@ The structure of this repository is given below:
 
 ## Tutorials
 ### Training and evaluation of ICK
-ICK is typically used to fit multi-modal data (e.g. a dataset containing both images and tabular data). To construct an ICK model, we first need to determine the types of kernels we want to use for each modality. Say we want to one kernel implied by a convolutional neural network to process images widh dimension $$100 \times 100 \times 3$$ and periodic kernel mapped by Nystrom approximation to process the corresponding 1-dimensional timestamp data, then we can define our kernels and ICK model as follows:
+ICK is typically used to fit multi-modal data (e.g. a dataset containing both images and tabular data). To construct an ICK model, we first need to determine the types of kernels we want to use for each modality. Say we want to one kernel implied by a convolutional neural network to process images widh dimension $100 \times 100 \times 3$ and periodic kernel mapped by Nystrom approximation to process the corresponding 1-dimensional timestamp data, then we can define our kernels and ICK model as follows:
 ```
 from model import ICK
 from kernels.kernel_fn import periodic_kernel_nys
@@ -82,6 +82,13 @@ kernel_params = {
 model = ICK(kernel_assignment, kernel_params)
 ```
 Note that here we also specify the architecture and periodic kernel parameters through the argument `kernel_params`, including the depth (`num_blocks`) and width (`num_intermediate_channels`) of the convolutional network, the filter size (`kernel_size`), and the initial values of those trainable parameters in the periodic kernel including std, period, length scale, and a white noise term. After constructing the model, we can use the `Trainer` classes in `utils.train` to fit it. Please refer to the notebook `tutorial_1d_regression.ipynb` for a more detailed tutorial of fitting ICK (as well as other variants of ICK such as variational ICK, ICK ensemble, etc.) to multi-modal data in a simple regression task. <br />
+
+### Training and Evaluation of CMDE/CMICK
+CMDE/CMICK is typically used for estimating the causal effect of a binary treatment from an observational dataset. Say we have covariates $X$ and a binary treatment $T \in \{0, 1\}$, and we want to predict the potential outcomes $\hat{Y}_0$ and $\hat{Y}_1$ for both control and treatment groups using the following formulation:
+\begin{align}
+\hat{Y}_0(X) &= \alpha_H f_H(X) + \alpha_{HT} f_{HT}(X) \\
+\hat{Y}_1(X) &= \alpha_{HT} f_{HT}(X) + \alpha_T f_T(X)
+\end{align}
 
 Please refer to the notebook `experiments/causal_inference/synthetic_data_experiment.ipynb` for an example of fitting CMDE to a synthetic toy dataset in causal inference setting.
 
