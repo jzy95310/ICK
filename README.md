@@ -84,9 +84,57 @@ model = ICK(kernel_assignment, kernel_params)
 Note that here we also specify the architecture and periodic kernel parameters through the argument `kernel_params`, including the depth (`num_blocks`) and width (`num_intermediate_channels`) of the convolutional network, the filter size (`kernel_size`), and the initial values of those trainable parameters in the periodic kernel including std, period, length scale, and a white noise term. After constructing the model, we can use the `Trainer` classes in `utils.train` to fit it. Please refer to the notebook `tutorial_1d_regression.ipynb` for a more detailed tutorial of fitting ICK (as well as other variants of ICK such as variational ICK, ICK ensemble, etc.) to multi-modal data in a simple regression task. <br />
 
 ### Training and Evaluation of CMDE/CMICK
-CMDE/CMICK is typically used for estimating the causal effect of a binary treatment from an observational dataset. Say we have covariates $X$ and a binary treatment $T \in {0, 1}$, and we want to predict the potential outcomes $Y_0$ and $Y_1$ for both control and treatment groups using the formulation: $Y_0(X) = \alpha_H f_H(X) + \alpha_{HT} f_{HT}(X)$ and $Y_1(X) = \alpha_{HT} f_{HT}(X) + \alpha_T f_T(X)$
+CMDE/CMICK is typically used for estimating the causal effect of a binary treatment from an observational dataset. Say we have covariates $X$ with dimension of 30 and a binary treatment $T \in {0, 1}$, and we want to predict the potential outcomes $Y_0$ and $Y_1$ for both control and treatment groups using the formulation: $Y_0(X) = \alpha_H f_H(X) + \alpha_{HT} f_{HT}(X)$ and $Y_1(X) = \alpha_{HT} f_{HT}(X) + \alpha_T f_T(X)$ where $f_H$, $f_T$, and $f_{HT}$ are all dense neural networks, then we can define one of the ** baselearners** in CMDE as follows:
+```
+from model import ICK, CMICK
 
-Please refer to the notebook `experiments/causal_inference/synthetic_data_experiment.ipynb` for an example of fitting CMDE to a synthetic toy dataset in causal inference setting.
+alpha_H, alpha_T, alpha_HT = ...
+f_H = ICK(
+    kernel_assignment=['ImplicitDenseNetKernel'],
+    kernel_params={
+        'ImplicitDenseNetKernel':{
+            'input_dim': 30,
+            'latent_feature_dim': 512,
+            'num_blocks': 1, 
+            'num_layers_per_block': 1, 
+            'num_units': 512, 
+            'activation': 'relu'
+        }
+    }
+)
+f_T = ICK(
+    kernel_assignment=['ImplicitDenseNetKernel'],
+    kernel_params={
+        'ImplicitDenseNetKernel':{
+            'input_dim': 30,
+            'latent_feature_dim': 512,
+            'num_blocks': 1, 
+            'num_layers_per_block': 1, 
+            'num_units': 512, 
+            'activation': 'relu'
+        }
+    }
+)
+f_HT = ICK(
+    kernel_assignment=['ImplicitDenseNetKernel'],
+    kernel_params={
+        'ImplicitDenseNetKernel':{
+            'input_dim': 30,
+            'latent_feature_dim': 512,
+            'num_blocks': 1, 
+            'num_layers_per_block': 1, 
+            'num_units': 512, 
+            'activation': 'relu'
+        }
+    }
+)
+baselearner = CMICK(
+    control_components=[f_H], treatment_components=[f_T], shared_components=[f_HT],
+    control_coeffs=[alpha_H], treatment_coeffs=[alpha_T], shared_coeffs=[alpha_HT], 
+    coeff_trainable=True
+)
+```
+Note that we borrow the `ICK` template to define the neural networks for $f_H$, $f_T$, and $f_{HT}$, but users are welcmoe to define their own neural networks as long as it inherits `torch.nn.Module`. After constructing the ensemble, we can also use the `Trainer` classes in `utils.train` to fit it. Please refer to the notebook `experiments/causal_inference/synthetic_data_experiment.ipynb` for an example of fitting CMDE to a synthetic toy dataset in causal inference setting.
 
 ## Citation
 If you publish any materials using this repository, please include the following Bibtex citation:
