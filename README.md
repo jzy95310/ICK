@@ -85,10 +85,10 @@ Note that here we also specify the architecture and periodic kernel parameters t
 
 ### Training and Evaluation of CMDE/CMICK
 CMDE/CMICK is typically used for estimating the causal effect of a binary treatment from an observational dataset. Say we have covariates $X$ and a binary treatment $T \in \{0, 1\}$, and we want to predict the potential outcomes $\hat{Y}_0$ and $\hat{Y}_1$ for both control and treatment groups using the following formulation:
-\begin{align}
+$$
 \hat{Y}_0(X) &= \alpha_H f_H(X) + \alpha_{HT} f_{HT}(X) \\
 \hat{Y}_1(X) &= \alpha_{HT} f_{HT}(X) + \alpha_T f_T(X)
-\end{align}
+$$
 
 Please refer to the notebook `experiments/causal_inference/synthetic_data_experiment.ipynb` for an example of fitting CMDE to a synthetic toy dataset in causal inference setting.
 
