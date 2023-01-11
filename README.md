@@ -52,7 +52,7 @@ The structure of this repository is given below:
 
 ## Tutorials
 ### Training and evaluation of ICK
-ICK is typically used to fit multi-modal data (e.g. a dataset containing both images and tabular data). To construct an ICK model, we first need to determine the types of kernels we want to use for each modality. Say we want to one kernel implied by a convolutional neural network to process images widh dimension 3*100*100 and periodic kernel mapped by Nystrom approximation to process the corresponding 1-dimensional timestamp data, then we can define our kernels and ICK model as follows:
+ICK is typically used to fit multi-modal data (e.g. a dataset containing both images and tabular data). To construct an ICK model, we first need to determine the types of kernels we want to use for each modality. Say we want to one kernel implied by a convolutional neural network to process images widh dimension $$100 \times 100 \times 3$$ and periodic kernel mapped by Nystrom approximation to process the corresponding 1-dimensional timestamp data, then we can define our kernels and ICK model as follows:
 ```
 from model import ICK
 from kernels.kernel_fn import periodic_kernel_nys
