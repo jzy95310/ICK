@@ -911,7 +911,7 @@ def main():
         axs[0,0].errorbar(propensity_range, np.mean(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), 
                           np.std(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), 
                           color=colors[i], marker=markers[i], label=labels[i], capsize=10)
-    axs[0,0].set_xlabel('p(T)', fontsize=15)
+    axs[0,0].set_xlabel('p(T = 1)', fontsize=15)
     axs[0,0].set_ylabel('$\sqrt{PEHE}$', fontsize=15)
     axs[0,0].set_facecolor('#F2F2F2')
     axs[0,0].grid(color='white')
@@ -926,7 +926,7 @@ def main():
         axs[0,1].errorbar(propensity_range, np.mean(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), 
                           np.std(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), 
                           color=colors[i], marker=markers[i], label=labels[i], capsize=10)
-    axs[0,1].set_xlabel('p(T)', fontsize=15)
+    axs[0,1].set_xlabel('p(T = 1)', fontsize=15)
     axs[0,1].set_ylabel('$\sqrt{PEHE}$', fontsize=15)
     axs[0,1].set_facecolor('#F2F2F2')
     axs[0,1].grid(color='white')
@@ -940,7 +940,7 @@ def main():
         axs[1,0].errorbar(propensity_range, np.mean(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), 
                           np.std(np.array(saved_res['sqrt_PEHE'][model_names[i]]), axis=0), 
                           color=colors[i], marker=markers[i], label=labels[i], capsize=10)
-    axs[1,0].set_xlabel('p(T)', fontsize=15)
+    axs[1,0].set_xlabel('p(T = 1)', fontsize=15)
     axs[1,0].set_ylabel('$\sqrt{PEHE}$', fontsize=15)
     axs[1,0].set_facecolor('#F2F2F2')
     axs[1,0].grid(color='white')
