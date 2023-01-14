@@ -578,9 +578,9 @@ def fit_evaluate_cfrnet_image_only(input_width, input_height, in_channels, phi_d
     )
     trainer.train()
     
-    mean_test_pred, std_test_pred, y_test_true = trainer.predict()
+    y_test_pred, y_test_true = trainer.predict()
     y_test, t_test = data['Y_test'], data['T_test']
-    r_pol = policy_risk(mean_test_pred, y_test, t_test)
+    r_pol = policy_risk(y_test_pred, y_test, t_test)
     
     print('Policy risk (CFRNet-Wass with image only):             %.4f' % (r_pol))
 
