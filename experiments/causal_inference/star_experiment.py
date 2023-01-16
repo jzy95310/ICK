@@ -922,7 +922,7 @@ def main():
     boxplot_data1 = []
     for i in range(len(model_names)):
         boxplot_data1.append(res['R_pol'][model_names[i]])
-    bplot1=axes[0,0].boxplot(boxplot_data1,
+    bplot1=axs[0,0].boxplot(boxplot_data1,
                        vert=True,
                        patch_artist=True, labels = labels)
     for patch, color in zip(bplot1['boxes'], colors):
@@ -939,7 +939,7 @@ def main():
     boxplot_data2 = []
     for i in range(len(model_names)):
         boxplot_data2.append(res['R_pol'][model_names[i]])
-    bplot2=axes[0,1].boxplot(boxplot_data2,
+    bplot2=axs[0,1].boxplot(boxplot_data2,
                        vert=True,
                        patch_artist=True, labels = labels)
     for patch, color in zip(bplot2['boxes'], colors):
@@ -956,7 +956,7 @@ def main():
     boxplot_data3 = []
     for i in range(len(model_names)):
         boxplot_data3.append(res['R_pol'][model_names[i]])
-    bplot3=axes[1,0].boxplot(boxplot_data3,
+    bplot3=axs[1,0].boxplot(boxplot_data3,
                        vert=True,
                        patch_artist=True, labels = labels)
     for patch, color in zip(bplot3['boxes'], colors):
