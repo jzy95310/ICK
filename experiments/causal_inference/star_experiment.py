@@ -49,9 +49,7 @@ def load_and_preprocess_data(train_ratio, test_ratio, random_state, include_imag
     
     demo_info_dir = '../../data/STAR/STAR.csv'
     imgs_dir = '../../data/STAR/face_pic/'
-    col_names = ['sgender.0', 'sgender.1', 
-                 'srace.0', 'srace.1', 'srace.2', 'srace.4',
-                 'trace.1', 'trace.2',
+    col_names = ['trace.1', 'trace.2',
                  'degree.2', 'degree.3', 'degree.5', 'degree.6',
                  'careerladder.1', 'careerladder.2', 'careerladder.3', 'careerladder.4', 'careerladder.5', 'careerladder.6',
                  'teachingexperience']
