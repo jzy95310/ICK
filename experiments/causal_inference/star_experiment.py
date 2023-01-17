@@ -902,8 +902,8 @@ def main():
         r_pol_single_rep['donut_image_only'].append(r_pol_donut_image_only)
         r_pol_single_rep['donut_demo_only'].append(r_pol_donut_demo_only)
 
-    for key in r_pol_single_rep.keys():
-        res['R_pol'][key].append(r_pol_single_rep[key][0])   #len(res['R_pol'][key]) = 10, type(res['R_pol'][key][0]) = float)
+        for key in r_pol_single_rep.keys():
+            res['R_pol'][key].append(r_pol_single_rep[key][0])   #len(res['R_pol'][key]) = 10, type(res['R_pol'][key][0]) = float)
     
     if not os.path.exists('./results'):
         os.makedirs('./results')
