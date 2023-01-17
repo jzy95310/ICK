@@ -301,7 +301,7 @@ class CFRNetTrainer(Trainer):
         for step, batch in enumerate(self.data_generators[TRAIN]):
             data, target = self._assign_device_to_data(batch[0], batch[1])
             data, group = data[:self.treatment_index] + data[self.treatment_index+1:], data[self.treatment_index]
-            if all(group == 0) or all(group == 1):
+            if len(group.shape) == 0 or all(group == 0) or all(group == 1):
                 continue
             data = data[0] if len(data) == 1 else data
             # Zero the gradients
@@ -334,7 +334,7 @@ class CFRNetTrainer(Trainer):
             for batch in self.data_generators[key]:
                 data, target = self._assign_device_to_data(batch[0], batch[1])
                 data, group = data[:self.treatment_index] + data[self.treatment_index+1:], data[self.treatment_index]
-                if all(group == 0) or all(group == 1):
+                if len(group.shape) == 0 or all(group == 0) or all(group == 1):
                     continue
                 data = data[0] if len(data) == 1 else data
                 y_pred, phi_out = self.model(data, group)
@@ -395,6 +395,8 @@ class DCNTrainer(Trainer):
         for step, batch in enumerate(self.data_generators[TRAIN]):
             data, target = self._assign_device_to_data(batch[0], batch[1])
             data, group = data[:self.treatment_index] + data[self.treatment_index+1:], torch.squeeze(data[self.treatment_index])
+            if len(group.shape) == 0 or all(group == 0) or all(group == 1):
+                continue
             data = data[0] if len(data) == 1 else data
             # Zero the gradients
             self.optimizer.zero_grad()
@@ -422,6 +424,8 @@ class DCNTrainer(Trainer):
             for batch in self.data_generators[key]:
                 data, target = self._assign_device_to_data(batch[0], batch[1])
                 data, group = data[:self.treatment_index] + data[self.treatment_index+1:], torch.squeeze(data[self.treatment_index])
+                if len(group.shape) == 0 or all(group == 0) or all(group == 1):
+                    continue
                 data = data[0] if len(data) == 1 else data
                 output = self.model(data).float().to(self.device)
                 y_val_pred = torch.cat((y_val_pred, output), dim=0)
@@ -489,6 +493,8 @@ class DONUTTrainer(Trainer):
         for step, batch in enumerate(self.data_generators[TRAIN]):
             data, target = self._assign_device_to_data(batch[0], batch[1])
             data, group = data[:self.treatment_index] + data[self.treatment_index+1:], torch.squeeze(data[self.treatment_index])
+            if len(group.shape) == 0 or all(group == 0) or all(group == 1):
+                continue
             data = data[0] if len(data) == 1 else data
             # Zero the gradients
             self.optimizer.zero_grad()
@@ -516,6 +522,8 @@ class DONUTTrainer(Trainer):
             for batch in self.data_generators[key]:
                 data, target = self._assign_device_to_data(batch[0], batch[1])
                 data, group = data[:self.treatment_index] + data[self.treatment_index+1:], torch.squeeze(data[self.treatment_index])
+                if len(group.shape) == 0 or all(group == 0) or all(group == 1):
+                    continue
                 data = data[0] if len(data) == 1 else data
                 output = self.model(data).float().to(self.device)
                 y_val_pred = torch.cat((y_val_pred, output), dim=0)

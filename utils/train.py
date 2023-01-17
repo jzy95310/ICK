@@ -581,6 +581,8 @@ class CMICKEnsembleTrainer(EnsembleTrainer):
         for _, batch in enumerate(self.data_generators[TRAIN]):
             data, target = self._assign_device_to_data(batch[0], batch[1])
             data, group = data[:self.treatment_index] + data[self.treatment_index+1:], torch.squeeze(data[self.treatment_index])
+            if len(group.shape) == 0 or all(group == 0) or all(group == 1):
+                continue
             predictions = torch.empty(0, data[0].shape[0], 2).to(self.device)
             # Zero the gradients
             self.optimizer.zero_grad()
@@ -676,6 +678,8 @@ class CMICKEnsembleTrainer(EnsembleTrainer):
                 for batch in self.data_generators[key]:
                     data, target = self._assign_device_to_data(batch[0], batch[1])
                     data, group = data[:self.treatment_index] + data[self.treatment_index+1:], torch.squeeze(data[self.treatment_index])
+                    if len(group.shape) == 0 or all(group == 0) or all(group == 1):
+                        continue
                     output = self.model[i](data).float()
                     y_val_pred[i] = torch.cat((y_val_pred[i], output), dim=0)
                     if i == 0:
