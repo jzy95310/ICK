@@ -43,9 +43,13 @@ class BasicBlock2D(nn.Module):
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding=padding)
         self.bn = nn.BatchNorm2d(out_channels) if use_batch_norm else nn.Identity()
         self.act = ACTIVATIONS[activation]
+        self.downsample = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding=padding), 
+            nn.BatchNorm2d(out_channels) if use_batch_norm else nn.Identity()
+        )
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        identity = x
+        identity = self.downsample(x)
         out = self.conv(x)
         out = self.bn(out)
         out += identity
