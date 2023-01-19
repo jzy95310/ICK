@@ -940,74 +940,84 @@ def main():
     with open('./results/star_results.pkl', 'wb') as fp:
         pkl.dump(res, fp)     
     
-    fig, axs = plt.subplots(2, 2, figsize=(30, 14))
+    fig, axs = plt.subplots(2, 2, figsize=(15, 14))
     model_names = ['cmde_image_only', 'cfrnet_wass_image_only', 'dcn_pd_image_only', 'donut_image_only', 'cmde_image_demo']
-    colors = ['blue', 'red', 'purple', 'magenta', 'green']
-    labels = ['CMDE-img', 'CFRNet-img', 'DCN-PD-img', 'DONUT-img', 'CMDE-mul']
+    colors = ['#6671FF', '#FF9997', '#C097FF', '#FA97FF', '#97FFAA']
+    labels = ['CMDE-\nimg', 'CFRNet-\nimg', 'DCN-PD-\nimg', 'DONUT-\nimg', 'CMDE-\nmul']
     boxplot_data1 = []
     for i in range(len(model_names)):
         boxplot_data1.append(res['R_pol'][model_names[i]])
     bplot1 = axs[0,0].boxplot(boxplot_data1,
-                       vert=True,
+                       sym='', vert=True, 
                        patch_artist=True, labels = labels)
     for patch, color in zip(bplot1['boxes'], colors):
         patch.set_facecolor(color)
-    axs[0,0].set_xlabel('Model Names', fontsize=15)
+    for median in bplot1['medians']:
+        median.set_color('black')
     axs[0,0].set_ylabel('Policy Risk', fontsize=15)
+    axs[0,0].tick_params(axis='both', which='major', labelsize=15)
     axs[0,0].set_facecolor('#F2F2F2')
     axs[0,0].grid(color='white')
     axs[0,0].set_title('Policy risk with only image as input for benchmark models', fontsize=15)
-    
+
     model_names = ['cmde_demo_only', 'cfrnet_wass_demo_only', 'donut_demo_only', 'cmde_image_demo']
-    colors = ['blue', 'red', 'magenta', 'green']
-    labels = ['CMDE-dem', 'CFRNet-dem', 'DONUT-dem', 'CMDE-mul']
+    colors = ['#6671FF', '#FF9997', '#FA97FF', '#97FFAA']
+    labels = ['CMDE-\ndem', 'CFRNet-\ndem', 'DONUT-\ndem', 'CMDE-\nmul']
     boxplot_data2 = []
     for i in range(len(model_names)):
         boxplot_data2.append(res['R_pol'][model_names[i]])
     bplot2 = axs[0,1].boxplot(boxplot_data2,
-                       vert=True,
+                       sym='', vert=True,
                        patch_artist=True, labels = labels)
     for patch, color in zip(bplot2['boxes'], colors):
         patch.set_facecolor(color)
-    axs[0,1].set_xlabel('Model Names', fontsize=15)
+    for median in bplot2['medians']:
+        median.set_color('black')
     axs[0,1].set_ylabel('Policy Risk', fontsize=15)
+    axs[0,1].tick_params(axis='both', which='major', labelsize=15)
     axs[0,1].set_facecolor('#F2F2F2')
     axs[0,1].grid(color='white')
     axs[0,1].set_title('Policy risk with only demographic information as input\n for benchmark models', fontsize=15)
-    
+
     model_names = ['cmde_image_only', 'cfrnet_wass_image_only', 'dcn_pd_image_only', 'donut_image_only', 'cmde_image_demo']
-    colors = ['blue', 'red', 'purple', 'magenta', 'green']
-    labels = ['CMDE-img', 'CFRNet-img', 'DCN-PD-img', 'DONUT-img', 'CMDE-mul']
+    colors = ['#6671FF', '#FF9997', '#C097FF', '#FA97FF', '#97FFAA']
+    labels = ['CMDE-\nimg', 'CFRNet-\nimg', 'DCN-PD-\nimg', 'DONUT-\nimg', 'CMDE-\nmul']
     boxplot_data3 = []
     for i in range(len(model_names)):
         boxplot_data3.append(res['eps_ate'][model_names[i]])
     bplot3 = axs[1,0].boxplot(boxplot_data3,
-                       vert=True,
+                       sym='', vert=True,
                        patch_artist=True, labels = labels)
     for patch, color in zip(bplot3['boxes'], colors):
         patch.set_facecolor(color)
-    axs[1,0].set_xlabel('Model Names', fontsize=15)
+    for median in bplot3['medians']:
+        median.set_color('black')
     axs[1,0].set_ylabel('ATE error', fontsize=15)
+    axs[1,0].tick_params(axis='both', which='major', labelsize=15)
     axs[1,0].set_facecolor('#F2F2F2')
     axs[1,0].grid(color='white')
     axs[1,0].set_title('ATE error with only image as input for benchmark models', fontsize=15)
 
     model_names = ['cmde_demo_only', 'cfrnet_wass_demo_only', 'donut_demo_only', 'cmde_image_demo']
-    colors = ['blue', 'red', 'magenta', 'green']
-    labels = ['CMDE-dem', 'CFRNet-dem', 'DONUT-dem', 'CMDE-mul']
+    colors = ['#6671FF', '#FF9997', '#FA97FF', '#97FFAA']
+    labels = ['CMDE-\ndem', 'CFRNet-\ndem', 'DONUT-\ndem', 'CMDE-\nmul']
     boxplot_data4 = []
     for i in range(len(model_names)):
         boxplot_data4.append(res['eps_ate'][model_names[i]])
     bplot4 = axs[1,1].boxplot(boxplot_data4,
-                       vert=True,
+                       sym='', vert=True,
                        patch_artist=True, labels = labels)
     for patch, color in zip(bplot4['boxes'], colors):
         patch.set_facecolor(color)
-    axs[1,1].set_xlabel('Model Names', fontsize=15)
+    for median in bplot4['medians']:
+        median.set_color('black')
     axs[1,1].set_ylabel('ATE error', fontsize=15)
+    axs[1,1].tick_params(axis='both', which='major', labelsize=15)
     axs[1,1].set_facecolor('#F2F2F2')
     axs[1,1].grid(color='white')
     axs[1,1].set_title('ATE error with only demographic information as input\n for benchmark models', fontsize=15)
+
+    fig.tight_layout(pad=1.0)
 
     if not os.path.exists('./Figures'):
         os.makedirs('./Figures')
