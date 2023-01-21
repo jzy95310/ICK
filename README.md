@@ -1,4 +1,4 @@
-# Implicit Composite Kernel (ICK)
+# Causal Multi-task Deep Ensemble (CMDE)
 
 This repository contains PyTorch implementation for the paper "Estimating Causal Effect using Multi-task Deep Ensemble" (CMDE, currently under review).
 
