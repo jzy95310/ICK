@@ -12,7 +12,7 @@
 # Cohen JP, Morrison P, Dao L, Roth K, Duong TQ, Ghassemi M (2020) Covid-19 image data collection:
 # Prospective predictions are the future. arXiv:2006.11988
 # Output: metadata_clean.csv
-# author : Zhuoran Hou
+# author : XXX
 # Date: Dec-01-2022
 ##########################################################################################
 
@@ -21,7 +21,6 @@ library(tidyverse)
 set.seed(1234)
 
 ## data cleaning 
-
 
 dat<-read.csv('metadata.csv')[,1:24]
 
