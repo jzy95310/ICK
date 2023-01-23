@@ -1,8 +1,8 @@
 
 ##########################################################################################
 # Create potential outcome for simulation based on metadata_clean.csv
-# with unbalanced treatment assignment
-# ignorability holds
+# 
+# ignorability does not hold
 ##########################################################################################
 
 ##########################################################################################
@@ -12,18 +12,18 @@
 # Cohen JP, Morrison P, Dao L, Roth K, Duong TQ, Ghassemi M (2020) Covid-19 image data collection:
 # Prospective predictions are the future. arXiv:2006.11988
 
-# Output: 0.1metadata_PO.csv to 0.9metadata_PO.csv
+# Output: metadata_PO_x.csv
 # author : XXX
 # Date: Dec-27-2022
 ##########################################################################################
 
 
-for (pp in seq(from=0.1, to=0.9, by=0.1) ) {
 
+for (i in seq(from=0.1, to=0.5, by=0.1) ) {
 
 dat<-read.csv('metadata_clean_for_PO.csv')
 
-attach(dat)
+attach(dat,warn.conflicts = FALSE)
 
 set.seed(1234)
 
@@ -98,10 +98,31 @@ e0<-rnorm(dim(dat)[1],mean = 0, sd =0.1)
 e1<-rnorm(dim(dat)[1],mean = 0, sd =0.1)
 
 
-## random generate treatment
-dat$treatment<-rbinom(dim(dat)[1],1,pp)
+## Create treatment depending on X, ignorability does not hold
+attach(dat,warn.conflicts = FALSE)
 
-attach(dat)
+XX<-2*age+3*sex+5*Pneumonia_Viral+4*Pneumonia_Bacterial+
+  (-1)*Pneumonia_Fungal+Pneumonia_Other-2*Pneumonia_Unknown+
+  8*Tuberculosis
+
+## standardize XX
+XXX<-(XX-mean(XX))/sd(XX)
+
+## Logistic Sigmoid Function
+pp<-(1+exp(-XXX))^-1
+
+## random generate treatment
+dat$treatment<-rbinom(dim(dat)[1],1,(pp*i)/mean(pp) )
+
+##
+
+# summary(pp)
+# 
+# summary(dat$treatment)
+# 
+
+
+attach(dat,warn.conflicts = FALSE)
 
 #### Y0
 
@@ -132,13 +153,21 @@ dat$Y1<-b0+b1*offset+b2*sex+b3*age+b4*RT_PCR_positive+b5*survival+
   btt4*log(age)*Pneumonia_Unknown+btt5*log(age)*sex*Tuberculosis+
     e1
 
+##
 
 
 
-write.csv(dat,file=paste( paste( "metadata_PO",pp, sep="_"),".csv", sep=""),
+write.csv(dat,file=paste( paste( "metadata_PO",i, sep="_"),"x.csv", sep=""),
           row.names = FALSE)
 
+
+
 }
+
+
+
+
+
 
 
 
