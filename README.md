@@ -145,11 +145,18 @@ If you publish any materials using this repository, please include the following
   journal={arXiv preprint arXiv:2205.07384},
   year={2022}
 }
+
+@article{jiang2023estimating,
+  title={Estimating Causal Effects using a Multi-task Deep Ensemble},
+  author={Jiang, Ziyang and Hou, Zhuoran and Liu, Yiling and Ren, Yiman and Li, Keyu and Carlson, David},
+  journal={arXiv preprint arXiv:2301.11351},
+  year={2023}
+}
 ```
 
 ## References
 [1]. Jiang, Ziyang, Tongshu Zheng, and David Carlson. "Incorporating Prior Knowledge into Neural Networks through an Implicit Composite Kernel." arXiv preprint arXiv:2205.07384 (2022). <br />
-[2]. <br />
+[2]. Jiang, Ziyang, et al. "Estimating Causal Effects using a Multi-task Deep Ensemble." arXiv preprint arXiv:2301.11351 (2023). <br />
 [3]. Zhou, Tianhui, William E. Carson IV, and David Carlson. "Estimating potential outcome distributions with collaborating causal networks." arXiv preprint arXiv:2110.01664 (2021). <br />
 [4]. Louizos, Christos, et al. "Causal effect inference with deep latent-variable models." Advances in neural information processing systems 30 (2017). <br />
 [5]. Shalit, Uri, Fredrik D. Johansson, and David Sontag. "Estimating individual treatment effect: generalization bounds and algorithms." International Conference on Machine Learning. PMLR, 2017. <br />
