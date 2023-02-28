@@ -39,7 +39,7 @@ The structure of this repository is given below:
   - `nn.py`: Contains the definition of NN architectures (e.g. dense, convolutional) with **deterministic** layers
   - `nystrom.py`: Contains user-specified implicit kernels based on Nystrom approximation
   - `rff.py`: Contains user-specified implicit kernels based on Random Fourier Features (working in progress)
-- `models`: This module contains the implementation of the ICK/CMDE frameworks.
+- `model`: This module contains the implementation of the ICK/CMDE frameworks.
   - `ick.py`: Contains the definition of the ICK framework
   - `cmick.py`: Contains the definition of the Causal Multi-task Implicit Composite Kernel (CMICK) framework. Note that based on this definition, CMDE is considered a subset of CMICK since we can easily replace NN with a user-defined kernel as in `kernels/kernel_fn.py`.
 - `utils`: This module contains the utility and helper functions used for fitting the ICK model.
