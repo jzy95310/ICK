@@ -93,7 +93,6 @@ class BaseTrainer(ABC):
         if not isinstance(self.loss_fn, torch.nn.modules.loss._Loss):
             raise TypeError("loss_fn must be an instance of torch.nn.modules.loss._Loss")
         if not isinstance(self.device, torch.device):
-            print(self.device)
             raise TypeError("device must be an instance of torch.device")
         if not isinstance(self.logger, logging.Logger):
             raise TypeError("logger must be an instance of logging.Logger")
