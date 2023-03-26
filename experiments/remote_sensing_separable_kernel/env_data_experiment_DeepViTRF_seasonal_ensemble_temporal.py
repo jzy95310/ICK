@@ -114,7 +114,7 @@ def main(args):
         args.patience, 
         args.verbose
     )
-    spearmanr, pearsonr, rmse, mae, msll_score = calculate_stats(
+    spearmanr, pearsonr, rmse, mae, msll_score, nlpd_score = calculate_stats(
         y_test_pred_mean, 
         y_test_true, 
         y_test_pred_std, 
@@ -130,7 +130,8 @@ def main(args):
         Pearson_R=pearsonr, 
         RMSE=rmse,
         MAE=mae,
-        MSLL=msll_score
+        MSLL=msll_score, 
+        NLPD=nlpd_score
     )
 
 if __name__ == '__main__':

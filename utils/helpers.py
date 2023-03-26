@@ -98,7 +98,8 @@ def create_generators_from_data(x_train: Union[List[np.ndarray], np.ndarray], y_
 def calculate_stats(pred_vals_mean: np.ndarray, true_vals: np.ndarray, pred_vals_std: Union[np.ndarray, None] = None,
                     data_save_path: str = None) -> Tuple:
     """
-    Calculate the R-squared values, RMSE, MAE, and mean standardized log loss (MSLL) for evaluating the predictions
+    Calculate the R-squared values, RMSE, MAE, mean standardized log loss (MSLL), negative log predictive density (NLPD) 
+    for evaluating the predictions
     
     Arguments
     --------------
@@ -107,6 +108,12 @@ def calculate_stats(pred_vals_mean: np.ndarray, true_vals: np.ndarray, pred_vals
     pred_vals_std: Union[np.ndarray, None], the standard deviation of the predicted values
     data_save_path: str, the path to save the passed-in data
     """
+    def NLPD(y_pred_mean: np.ndarray, y_pred_std: np.ndarray, y_true: np.ndarray):
+        logits = 1./np.sqrt(2*np.pi*y_pred_std**2) * np.exp(-(y_true-y_pred_mean)**2/(2*y_pred_std**2))
+        for i in range(len(logits)):
+            logits[i] = max(logits[i], np.finfo(np.float32).eps)
+        return -np.mean(np.log(logits))
+    
     if data_save_path is not None:
         if not os.path.exists(os.path.dirname(data_save_path)):
             os.makedirs(os.path.dirname(data_save_path))
@@ -122,7 +129,8 @@ def calculate_stats(pred_vals_mean: np.ndarray, true_vals: np.ndarray, pred_vals
     res = tuple([spearmanr, pearsonr, rmse, mae])
     if pred_vals_std is not None:
         msll_score = np.mean((true_vals-pred_vals_mean)**2/(2*pred_vals_std**2) + 0.5*np.log(2*np.pi*pred_vals_std**2))
-        res = res + (msll_score,)
+        nlpd_score = NLPD(pred_vals_mean, pred_vals_std, true_vals)
+        res = res + (msll_score, nlpd_score,)
     return res
 
 def plot_pred_vs_true_vals(pred_vals: np.ndarray, true_vals: np.ndarray, x_label: str, y_label: str, title: str = None, 
