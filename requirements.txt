@@ -10,4 +10,3 @@ torchbnn==1.2
 vit-pytorch==0.35.8
 tqdm==4.64.1
 seaborn==0.12.2
-geomloss
