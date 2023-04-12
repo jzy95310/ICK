@@ -8,6 +8,7 @@ jaxlib==0.3.10+cuda11.cudnn805
 neural-tangents==0.5.0
 torchbnn==1.2
 vit-pytorch==0.35.8
+torch==1.10.1
 tqdm==4.64.1
 seaborn==0.12.2
 googledrivedownloader==0.4
