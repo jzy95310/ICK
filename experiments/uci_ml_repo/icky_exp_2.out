@@ -1,0 +1,1821 @@
+random state = 42
+Training started:
+
+Epoch 1/100
+Learning rate: 0.000100
+Training time - 125s - loss 0.3952
+Validation:
+41s - loss 0.0805
+
+Epoch 2/100
+Learning rate: 0.000100
+Training time - 121s - loss 0.0658
+Validation:
+41s - loss 0.0355
+
+Epoch 3/100
+Learning rate: 0.000100
+Training time - 121s - loss 0.0313
+Validation:
+41s - loss 0.0161
+
+Epoch 4/100
+Learning rate: 0.000100
+Training time - 121s - loss 0.0169
+Validation:
+41s - loss 0.0085
+
+Epoch 5/100
+Learning rate: 0.000100
+Training time - 121s - loss 0.0110
+Validation:
+41s - loss 0.0057
+
+Epoch 6/100
+Learning rate: 0.000100
+Training time - 121s - loss 0.0085
+Validation:
+41s - loss 0.0046
+
+Epoch 7/100
+Learning rate: 0.000100
+Training time - 120s - loss 0.0072
+Validation:
+41s - loss 0.0040
+
+Epoch 8/100
+Learning rate: 0.000100
+Training time - 122s - loss 0.0064
+Validation:
+41s - loss 0.0036
+
+Epoch 9/100
+Learning rate: 0.000100
+Training time - 118s - loss 0.0058
+Validation:
+41s - loss 0.0034
+
+Epoch 10/100
+Learning rate: 0.000100
+Training time - 118s - loss 0.0054
+Validation:
+41s - loss 0.0032
+
+Epoch 11/100
+Learning rate: 0.000100
+Training time - 118s - loss 0.0050
+Validation:
+41s - loss 0.0030
+
+Epoch 12/100
+Learning rate: 0.000100
+Training time - 119s - loss 0.0047
+Validation:
+40s - loss 0.0029
+
+Epoch 13/100
+Learning rate: 0.000100
+Training time - 118s - loss 0.0045
+Validation:
+41s - loss 0.0028
+
+Epoch 14/100
+Learning rate: 0.000100
+Training time - 119s - loss 0.0043
+Validation:
+41s - loss 0.0027
+
+Epoch 15/100
+Learning rate: 0.000100
+Training time - 120s - loss 0.0041
+Validation:
+41s - loss 0.0026
+
+Epoch 16/100
+Learning rate: 0.000100
+Training time - 120s - loss 0.0039
+Validation:
+41s - loss 0.0025
+
+Epoch 17/100
+Learning rate: 0.000100
+Training time - 120s - loss 0.0038
+Validation:
+41s - loss 0.0024
+
+Epoch 18/100
+Learning rate: 0.000100
+Training time - 120s - loss 0.0036
+Validation:
+41s - loss 0.0024
+
+Epoch 19/100
+Learning rate: 0.000100
+Training time - 120s - loss 0.0035
+Validation:
+41s - loss 0.0023
+
+Epoch 20/100
+Learning rate: 0.000100
+Training time - 120s - loss 0.0034
+Validation:
+41s - loss 0.0022
+
+Epoch 21/100
+Learning rate: 0.000100
+Training time - 120s - loss 0.0033
+Validation:
+41s - loss 0.0022
+
+Epoch 22/100
+Learning rate: 0.000100
+Training time - 120s - loss 0.0032
+Validation:
+41s - loss 0.0021
+
+Epoch 23/100
+Learning rate: 0.000100
+Training time - 120s - loss 0.0032
+Validation:
+41s - loss 0.0021
+
+Epoch 24/100
+Learning rate: 0.000100
+Training time - 119s - loss 0.0031
+Validation:
+41s - loss 0.0021
+
+Epoch 25/100
+Learning rate: 0.000100
+Training time - 119s - loss 0.0030
+Validation:
+41s - loss 0.0020
+
+Epoch 26/100
+Learning rate: 0.000100
+Training time - 119s - loss 0.0029
+Validation:
+41s - loss 0.0020
+
+Epoch 27/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0029
+Validation:
+40s - loss 0.0020
+
+Epoch 28/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0028
+Validation:
+40s - loss 0.0019
+
+Epoch 29/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0028
+Validation:
+40s - loss 0.0019
+
+Epoch 30/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0027
+Validation:
+40s - loss 0.0019
+
+Epoch 31/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0027
+Validation:
+40s - loss 0.0018
+
+Epoch 32/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0026
+Validation:
+40s - loss 0.0018
+
+Epoch 33/100
+Learning rate: 0.000100
+Training time - 125s - loss 0.0026
+Validation:
+50s - loss 0.0018
+
+Epoch 34/100
+Learning rate: 0.000100
+Training time - 142s - loss 0.0026
+Validation:
+50s - loss 0.0018
+
+Epoch 35/100
+Learning rate: 0.000100
+Training time - 142s - loss 0.0025
+Validation:
+50s - loss 0.0018
+
+Epoch 36/100
+Learning rate: 0.000100
+Training time - 142s - loss 0.0025
+Validation:
+50s - loss 0.0017
+
+Epoch 37/100
+Learning rate: 0.000100
+Training time - 142s - loss 0.0024
+Validation:
+51s - loss 0.0017
+
+Epoch 38/100
+Learning rate: 0.000100
+Training time - 142s - loss 0.0024
+Validation:
+50s - loss 0.0017
+
+Epoch 39/100
+Learning rate: 0.000100
+Training time - 143s - loss 0.0024
+Validation:
+49s - loss 0.0017
+
+Epoch 40/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0024
+Validation:
+40s - loss 0.0017
+
+Epoch 41/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0023
+Validation:
+40s - loss 0.0016
+
+Epoch 42/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0023
+Validation:
+40s - loss 0.0016
+
+Epoch 43/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0023
+Validation:
+40s - loss 0.0016
+
+Epoch 44/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0023
+Validation:
+40s - loss 0.0016
+
+Epoch 45/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0022
+Validation:
+40s - loss 0.0016
+
+Epoch 46/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0022
+Validation:
+40s - loss 0.0016
+
+Epoch 47/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0022
+Validation:
+40s - loss 0.0016
+
+Epoch 48/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0022
+Validation:
+40s - loss 0.0016
+
+Epoch 49/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0021
+Validation:
+40s - loss 0.0015
+
+Epoch 50/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0021
+Validation:
+40s - loss 0.0015
+
+Epoch 51/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0021
+Validation:
+40s - loss 0.0015
+
+Epoch 52/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0021
+Validation:
+40s - loss 0.0015
+
+Epoch 53/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0021
+Validation:
+40s - loss 0.0015
+
+Epoch 54/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0021
+Validation:
+40s - loss 0.0015
+
+Epoch 55/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0020
+Validation:
+40s - loss 0.0015
+
+Epoch 56/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0020
+Validation:
+40s - loss 0.0015
+
+Epoch 57/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0020
+Validation:
+40s - loss 0.0015
+
+Epoch 58/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0020
+Validation:
+40s - loss 0.0015
+
+Epoch 59/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0020
+Validation:
+40s - loss 0.0015
+
+Epoch 60/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0020
+Validation:
+40s - loss 0.0014
+
+Epoch 61/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0020
+Validation:
+40s - loss 0.0014
+
+Epoch 62/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0019
+Validation:
+40s - loss 0.0014
+
+Epoch 63/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0019
+Validation:
+40s - loss 0.0014
+
+Epoch 64/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0019
+Validation:
+40s - loss 0.0014
+
+Epoch 65/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0019
+Validation:
+40s - loss 0.0014
+
+Epoch 66/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0019
+Validation:
+40s - loss 0.0014
+
+Epoch 67/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0019
+Validation:
+40s - loss 0.0014
+
+Epoch 68/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0019
+Validation:
+40s - loss 0.0014
+
+Epoch 69/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0019
+Validation:
+40s - loss 0.0014
+
+Epoch 70/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0019
+Validation:
+40s - loss 0.0014
+
+Epoch 71/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 72/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 73/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 74/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 75/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 76/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 77/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 78/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0013
+
+Epoch 79/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0013
+
+Epoch 80/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0013
+
+Epoch 81/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0013
+
+Epoch 82/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0013
+
+Epoch 83/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0013
+
+Epoch 84/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 85/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 86/100
+Learning rate: 0.000100
+Training time - 117s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 87/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 88/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 89/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 90/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 91/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 92/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 93/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 94/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 95/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 96/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 97/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0017
+Validation:
+41s - loss 0.0013
+
+Epoch 98/100
+Learning rate: 0.000100
+Training time - 140s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 99/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 100/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Training completed.
+RMSE (ICKy) = 0.0359
+NLL (ICKy) = -1.7014
+random state = 43
+Training started:
+
+Epoch 1/100
+Learning rate: 0.000100
+Training time - 115s - loss 0.4158
+Validation:
+40s - loss 0.0821
+
+Epoch 2/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0626
+Validation:
+40s - loss 0.0327
+
+Epoch 3/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0273
+Validation:
+40s - loss 0.0140
+
+Epoch 4/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0145
+Validation:
+40s - loss 0.0077
+
+Epoch 5/100
+Learning rate: 0.000100
+Training time - 133s - loss 0.0098
+Validation:
+51s - loss 0.0055
+
+Epoch 6/100
+Learning rate: 0.000100
+Training time - 143s - loss 0.0078
+Validation:
+51s - loss 0.0045
+
+Epoch 7/100
+Learning rate: 0.000100
+Training time - 143s - loss 0.0067
+Validation:
+51s - loss 0.0040
+
+Epoch 8/100
+Learning rate: 0.000100
+Training time - 143s - loss 0.0060
+Validation:
+51s - loss 0.0036
+
+Epoch 9/100
+Learning rate: 0.000100
+Training time - 143s - loss 0.0054
+Validation:
+51s - loss 0.0033
+
+Epoch 10/100
+Learning rate: 0.000100
+Training time - 143s - loss 0.0050
+Validation:
+51s - loss 0.0031
+
+Epoch 11/100
+Learning rate: 0.000100
+Training time - 143s - loss 0.0047
+Validation:
+51s - loss 0.0030
+
+Epoch 12/100
+Learning rate: 0.000100
+Training time - 142s - loss 0.0045
+Validation:
+51s - loss 0.0028
+
+Epoch 13/100
+Learning rate: 0.000100
+Training time - 142s - loss 0.0042
+Validation:
+44s - loss 0.0027
+
+Epoch 14/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0040
+Validation:
+40s - loss 0.0026
+
+Epoch 15/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0039
+Validation:
+40s - loss 0.0025
+
+Epoch 16/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0037
+Validation:
+40s - loss 0.0025
+
+Epoch 17/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0036
+Validation:
+40s - loss 0.0024
+
+Epoch 18/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0035
+Validation:
+40s - loss 0.0023
+
+Epoch 19/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0034
+Validation:
+40s - loss 0.0023
+
+Epoch 20/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0033
+Validation:
+40s - loss 0.0022
+
+Epoch 21/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0032
+Validation:
+40s - loss 0.0022
+
+Epoch 22/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0031
+Validation:
+40s - loss 0.0021
+
+Epoch 23/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0031
+Validation:
+40s - loss 0.0021
+
+Epoch 24/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0030
+Validation:
+40s - loss 0.0020
+
+Epoch 25/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0029
+Validation:
+40s - loss 0.0020
+
+Epoch 26/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0029
+Validation:
+40s - loss 0.0020
+
+Epoch 27/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0028
+Validation:
+40s - loss 0.0019
+
+Epoch 28/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0028
+Validation:
+40s - loss 0.0019
+
+Epoch 29/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0027
+Validation:
+40s - loss 0.0019
+
+Epoch 30/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0027
+Validation:
+40s - loss 0.0019
+
+Epoch 31/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0026
+Validation:
+40s - loss 0.0018
+
+Epoch 32/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0026
+Validation:
+40s - loss 0.0018
+
+Epoch 33/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0026
+Validation:
+40s - loss 0.0018
+
+Epoch 34/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0025
+Validation:
+40s - loss 0.0018
+
+Epoch 35/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0025
+Validation:
+40s - loss 0.0018
+
+Epoch 36/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0024
+Validation:
+40s - loss 0.0017
+
+Epoch 37/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0024
+Validation:
+40s - loss 0.0017
+
+Epoch 38/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0024
+Validation:
+40s - loss 0.0017
+
+Epoch 39/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0024
+Validation:
+40s - loss 0.0017
+
+Epoch 40/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0023
+Validation:
+40s - loss 0.0017
+
+Epoch 41/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0023
+Validation:
+40s - loss 0.0017
+
+Epoch 42/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0023
+Validation:
+40s - loss 0.0017
+
+Epoch 43/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0023
+Validation:
+40s - loss 0.0016
+
+Epoch 44/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0022
+Validation:
+40s - loss 0.0016
+
+Epoch 45/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0022
+Validation:
+40s - loss 0.0016
+
+Epoch 46/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0022
+Validation:
+40s - loss 0.0016
+
+Epoch 47/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0022
+Validation:
+40s - loss 0.0016
+
+Epoch 48/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0022
+Validation:
+40s - loss 0.0016
+
+Epoch 49/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0021
+Validation:
+40s - loss 0.0016
+
+Epoch 50/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0021
+Validation:
+40s - loss 0.0016
+
+Epoch 51/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0021
+Validation:
+40s - loss 0.0016
+
+Epoch 52/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0021
+Validation:
+40s - loss 0.0015
+
+Epoch 53/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0021
+Validation:
+40s - loss 0.0015
+
+Epoch 54/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0021
+Validation:
+40s - loss 0.0015
+
+Epoch 55/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0020
+Validation:
+40s - loss 0.0015
+
+Epoch 56/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0020
+Validation:
+40s - loss 0.0015
+
+Epoch 57/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0020
+Validation:
+40s - loss 0.0015
+
+Epoch 58/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0020
+Validation:
+40s - loss 0.0015
+
+Epoch 59/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0020
+Validation:
+40s - loss 0.0015
+
+Epoch 60/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0020
+Validation:
+40s - loss 0.0015
+
+Epoch 61/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0020
+Validation:
+40s - loss 0.0015
+
+Epoch 62/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0019
+Validation:
+40s - loss 0.0015
+
+Epoch 63/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0019
+Validation:
+40s - loss 0.0015
+
+Epoch 64/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0019
+Validation:
+40s - loss 0.0015
+
+Epoch 65/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0019
+Validation:
+40s - loss 0.0014
+
+Epoch 66/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0019
+Validation:
+40s - loss 0.0014
+
+Epoch 67/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0019
+Validation:
+40s - loss 0.0014
+
+Epoch 68/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0019
+Validation:
+40s - loss 0.0014
+
+Epoch 69/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0019
+Validation:
+40s - loss 0.0014
+
+Epoch 70/100
+Learning rate: 0.000100
+Training time - 121s - loss 0.0019
+Validation:
+40s - loss 0.0014
+
+Epoch 71/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0019
+Validation:
+40s - loss 0.0014
+
+Epoch 72/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 73/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 74/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 75/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 76/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 77/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 78/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 79/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 80/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 81/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 82/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 83/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 84/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 85/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0014
+
+Epoch 86/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0014
+
+Epoch 87/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0014
+
+Epoch 88/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 89/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 90/100
+Learning rate: 0.000100
+Training time - 124s - loss 0.0017
+Validation:
+51s - loss 0.0013
+
+Epoch 91/100
+Learning rate: 0.000100
+Training time - 143s - loss 0.0017
+Validation:
+51s - loss 0.0013
+
+Epoch 92/100
+Learning rate: 0.000100
+Training time - 143s - loss 0.0017
+Validation:
+51s - loss 0.0013
+
+Epoch 93/100
+Learning rate: 0.000100
+Training time - 143s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 94/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 95/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 96/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 97/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 98/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 99/100
+Learning rate: 0.000100
+Training time - 115s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 100/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Training completed.
+RMSE (ICKy) = 0.0360
+NLL (ICKy) = -1.7801
+random state = 44
+Training started:
+
+Epoch 1/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.3806
+Validation:
+40s - loss 0.0768
+
+Epoch 2/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0593
+Validation:
+40s - loss 0.0318
+
+Epoch 3/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0269
+Validation:
+40s - loss 0.0143
+
+Epoch 4/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0147
+Validation:
+40s - loss 0.0079
+
+Epoch 5/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0101
+Validation:
+51s - loss 0.0056
+
+Epoch 6/100
+Learning rate: 0.000100
+Training time - 143s - loss 0.0081
+Validation:
+51s - loss 0.0046
+
+Epoch 7/100
+Learning rate: 0.000100
+Training time - 125s - loss 0.0070
+Validation:
+40s - loss 0.0040
+
+Epoch 8/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0063
+Validation:
+40s - loss 0.0036
+
+Epoch 9/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0057
+Validation:
+40s - loss 0.0034
+
+Epoch 10/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0053
+Validation:
+40s - loss 0.0032
+
+Epoch 11/100
+Learning rate: 0.000100
+Training time - 119s - loss 0.0049
+Validation:
+40s - loss 0.0030
+
+Epoch 12/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0047
+Validation:
+40s - loss 0.0029
+
+Epoch 13/100
+Learning rate: 0.000100
+Training time - 115s - loss 0.0044
+Validation:
+40s - loss 0.0027
+
+Epoch 14/100
+Learning rate: 0.000100
+Training time - 115s - loss 0.0042
+Validation:
+40s - loss 0.0026
+
+Epoch 15/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0040
+Validation:
+40s - loss 0.0025
+
+Epoch 16/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0039
+Validation:
+40s - loss 0.0025
+
+Epoch 17/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0037
+Validation:
+40s - loss 0.0024
+
+Epoch 18/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0036
+Validation:
+40s - loss 0.0023
+
+Epoch 19/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0035
+Validation:
+40s - loss 0.0023
+
+Epoch 20/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0034
+Validation:
+40s - loss 0.0022
+
+Epoch 21/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0033
+Validation:
+40s - loss 0.0022
+
+Epoch 22/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0032
+Validation:
+40s - loss 0.0021
+
+Epoch 23/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0031
+Validation:
+40s - loss 0.0021
+
+Epoch 24/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0030
+Validation:
+40s - loss 0.0020
+
+Epoch 25/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0029
+Validation:
+40s - loss 0.0020
+
+Epoch 26/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0029
+Validation:
+40s - loss 0.0020
+
+Epoch 27/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0028
+Validation:
+40s - loss 0.0019
+
+Epoch 28/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0028
+Validation:
+40s - loss 0.0019
+
+Epoch 29/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0027
+Validation:
+40s - loss 0.0019
+
+Epoch 30/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0027
+Validation:
+40s - loss 0.0018
+
+Epoch 31/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0026
+Validation:
+40s - loss 0.0018
+
+Epoch 32/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0026
+Validation:
+40s - loss 0.0018
+
+Epoch 33/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0025
+Validation:
+40s - loss 0.0018
+
+Epoch 34/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0025
+Validation:
+40s - loss 0.0017
+
+Epoch 35/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0025
+Validation:
+40s - loss 0.0017
+
+Epoch 36/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0024
+Validation:
+40s - loss 0.0017
+
+Epoch 37/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0024
+Validation:
+40s - loss 0.0017
+
+Epoch 38/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0024
+Validation:
+40s - loss 0.0017
+
+Epoch 39/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0023
+Validation:
+40s - loss 0.0017
+
+Epoch 40/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0023
+Validation:
+40s - loss 0.0016
+
+Epoch 41/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0023
+Validation:
+40s - loss 0.0016
+
+Epoch 42/100
+Learning rate: 0.000100
+Training time - 112s - loss 0.0022
+Validation:
+40s - loss 0.0016
+
+Epoch 43/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0022
+Validation:
+40s - loss 0.0016
+
+Epoch 44/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0022
+Validation:
+40s - loss 0.0016
+
+Epoch 45/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0022
+Validation:
+40s - loss 0.0016
+
+Epoch 46/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0022
+Validation:
+40s - loss 0.0016
+
+Epoch 47/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0021
+Validation:
+40s - loss 0.0016
+
+Epoch 48/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0021
+Validation:
+40s - loss 0.0015
+
+Epoch 49/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0021
+Validation:
+40s - loss 0.0015
+
+Epoch 50/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0021
+Validation:
+40s - loss 0.0015
+
+Epoch 51/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0021
+Validation:
+40s - loss 0.0015
+
+Epoch 52/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0020
+Validation:
+40s - loss 0.0015
+
+Epoch 53/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0020
+Validation:
+40s - loss 0.0015
+
+Epoch 54/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0020
+Validation:
+40s - loss 0.0015
+
+Epoch 55/100
+Learning rate: 0.000100
+Training time - 138s - loss 0.0020
+Validation:
+51s - loss 0.0015
+
+Epoch 56/100
+Learning rate: 0.000100
+Training time - 144s - loss 0.0020
+Validation:
+51s - loss 0.0015
+
+Epoch 57/100
+Learning rate: 0.000100
+Training time - 144s - loss 0.0020
+Validation:
+51s - loss 0.0015
+
+Epoch 58/100
+Learning rate: 0.000100
+Training time - 144s - loss 0.0019
+Validation:
+51s - loss 0.0015
+
+Epoch 59/100
+Learning rate: 0.000100
+Training time - 143s - loss 0.0019
+Validation:
+51s - loss 0.0014
+
+Epoch 60/100
+Learning rate: 0.000100
+Training time - 144s - loss 0.0019
+Validation:
+51s - loss 0.0014
+
+Epoch 61/100
+Learning rate: 0.000100
+Training time - 143s - loss 0.0019
+Validation:
+51s - loss 0.0014
+
+Epoch 62/100
+Learning rate: 0.000100
+Training time - 144s - loss 0.0019
+Validation:
+51s - loss 0.0014
+
+Epoch 63/100
+Learning rate: 0.000100
+Training time - 144s - loss 0.0019
+Validation:
+51s - loss 0.0014
+
+Epoch 64/100
+Learning rate: 0.000100
+Training time - 144s - loss 0.0019
+Validation:
+51s - loss 0.0014
+
+Epoch 65/100
+Learning rate: 0.000100
+Training time - 144s - loss 0.0019
+Validation:
+46s - loss 0.0014
+
+Epoch 66/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 67/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 68/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 69/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 70/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 71/100
+Learning rate: 0.000100
+Training time - 117s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 72/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 73/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 74/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 75/100
+Learning rate: 0.000100
+Training time - 116s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 76/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0018
+Validation:
+40s - loss 0.0014
+
+Epoch 77/100
+Learning rate: 0.000100
+Training time - 121s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 78/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 79/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 80/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 81/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 82/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 83/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 84/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 85/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 86/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 87/100
+Learning rate: 0.000100
+Training time - 116s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 88/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 89/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 90/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 91/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 92/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0017
+Validation:
+40s - loss 0.0013
+
+Epoch 93/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0016
+Validation:
+40s - loss 0.0013
+
+Epoch 94/100
+Learning rate: 0.000100
+Training time - 114s - loss 0.0016
+Validation:
+40s - loss 0.0013
+
+Epoch 95/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0016
+Validation:
+40s - loss 0.0013
+
+Epoch 96/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0016
+Validation:
+40s - loss 0.0013
+
+Epoch 97/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0016
+Validation:
+40s - loss 0.0013
+
+Epoch 98/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0016
+Validation:
+40s - loss 0.0013
+
+Epoch 99/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0016
+Validation:
+40s - loss 0.0013
+
+Epoch 100/100
+Learning rate: 0.000100
+Training time - 113s - loss 0.0016
+Validation:
+40s - loss 0.0013
+
+Training completed.
+RMSE (ICKy) = 0.0360
+NLL (ICKy) = -1.4242
+Final results:
+Final RMSE (ICKy) = 0.0360 +/- 0.0000
+Final NLL (ICKy) = -1.4242 +/- 0.0000

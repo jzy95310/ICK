@@ -10,6 +10,7 @@ import logging
 import time
 from typing import Dict, List, Tuple, Union
 from abc import ABC, abstractmethod
+from sklearn.metrics import roc_auc_score
 from .constants import *
 from .helpers import calculate_stats, plot_pred_vs_true_vals
 from .losses import *
@@ -94,6 +95,8 @@ class BaseTrainer(ABC):
             raise TypeError("loss_fn must be an instance of torch.nn.modules.loss._Loss")
         if not isinstance(self.device, torch.device):
             raise TypeError("device must be an instance of torch.device")
+        if self.stop_criterion not in ['loss', 'auc']:
+            raise ValueError("stop_criterion must be one of the following: ['loss', 'auc']")
         if not isinstance(self.logger, logging.Logger):
             raise TypeError("logger must be an instance of logging.Logger")
     
@@ -107,10 +110,13 @@ class BaseTrainer(ABC):
         """
         Log and return the statistics of the predictions
         """
-        res = calculate_stats(pred_mean, target, pred_std)
-        res_dict = {"Spearman_R": res[0], "Pearson_R": res[1], "RMSE": res[2], "MAE": res[3]}
-        if len(res) > 4:
-            res_dict["MSLL"] = res[4]
+        if isinstance(self.loss_fn, (torch.nn.BCELoss, torch.nn.BCEWithLogitsLoss)):
+            res_dict = {"AUC": roc_auc_score(target, pred_mean)}
+        else:
+            res = calculate_stats(pred_mean, target, pred_std)
+            res_dict = {"Spearman_R": res[0], "Pearson_R": res[1], "RMSE": res[2], "MAE": res[3]}
+            if len(res) > 4:
+                res_dict["MSLL"] = res[4]
         for k, v in res_dict.items():
             self.logger.info("{}: {}".format(k, v))
         self.logger.info("\n")
@@ -146,11 +152,18 @@ class BaseTrainer(ABC):
 class Trainer(BaseTrainer):
     """
     Class for training the ICK model
+
+    Arguments
+    --------------
+    stop_criterion: str, the criterion to use for early stopping, default to 'loss'
+        stop_criterion = 'loss': early stopping based on the validation loss
+        stop_criterion = 'auc': early stopping based on the validation AUC, only applicable for binary classification
     """
     def __init__(self, model: torch.nn.Module, data_generators: Dict, optim: str, optim_params: Dict, lr_scheduler: torch.optim.lr_scheduler._LRScheduler = None, 
                  model_save_dir: str = None, model_name: str = 'model.pt', loss_fn: torch.nn.modules.loss._Loss = torch.nn.MSELoss(), 
                  device: torch.device = torch.device('cpu'), validation: bool = True, epochs: int = 100, patience: int = 10, verbose: int = 0, 
-                 logger: logging.Logger = logging.getLogger("Trainer")) -> None:
+                 stop_criterion: str = 'loss', logger: logging.Logger = logging.getLogger("Trainer")) -> None:
+        self.stop_criterion: str = stop_criterion
         super(Trainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, model_save_dir, model_name, loss_fn, 
                                       device, validation, epochs, patience, verbose, logger)
         self._validate_inputs()
@@ -186,7 +199,7 @@ class Trainer(BaseTrainer):
     
     def train(self) -> None:
         # initialize the early stopping counter
-        best_loss = 1e9
+        best_loss, best_auc = 1e9, 0
         best_model_state_dict = None
         trigger_times = 0
 
@@ -197,8 +210,8 @@ class Trainer(BaseTrainer):
             self.logger.info(f"Epoch {epoch+1}/{self.epochs}")
             self.logger.info(f"Learning rate: {self.optimizer.param_groups[0]['lr']:7.6f}")
             # Log the training time and loss
-            train_time = time.time() - train_start
             train_loss, step = self._train_step()
+            train_time = time.time() - train_start
             self.logger.info("{:.0f}s for {} steps - {:.0f}ms/step - loss {:.4f}" \
                   .format(train_time, step + 1, train_time * 1000 // (step + 1), train_loss))
             # Validation
@@ -210,7 +223,12 @@ class Trainer(BaseTrainer):
             if self.lr_scheduler is not None:
                 self.lr_scheduler.step()
             # Early stopping
-            if val_loss > best_loss:
+            if self.stop_criterion == 'loss':
+                early_stopping_flag = val_loss > best_loss
+            else:
+                val_auc = roc_auc_score(self.y_val_true.cpu().numpy(), self.y_val_pred.cpu().numpy())
+                early_stopping_flag = val_auc < best_auc
+            if early_stopping_flag:
                 trigger_times += 1
                 if trigger_times >= self.patience:
                     # Trigger early stopping and save the best model
@@ -224,7 +242,10 @@ class Trainer(BaseTrainer):
                     break
             else:
                 trigger_times = 0
-                best_loss = val_loss
+                if self.stop_criterion == 'loss':
+                    best_loss = val_loss
+                else:
+                    best_auc = val_auc
                 best_model_state_dict = self.model.state_dict()
             # Visualize the test predictions if verbose > 0
             if self.verbose > 0:
@@ -240,8 +261,8 @@ class Trainer(BaseTrainer):
         """
         Evaluate the ICK model on the validation data
         """
-        y_val_pred = torch.empty(0).to(self.device)
-        y_val_true = torch.empty(0).to(self.device)
+        self.y_val_pred = torch.empty(0).to(self.device)
+        self.y_val_true = torch.empty(0).to(self.device)
         self.model.eval()
 
         key = TRAIN if not self.validation else (VAL if self.data_generators[VAL] is not None else TEST)
@@ -249,9 +270,9 @@ class Trainer(BaseTrainer):
             for batch in self.data_generators[key]:
                 data, target = self._assign_device_to_data(batch[0], batch[1])
                 output = self.model(data).float()
-                y_val_pred = torch.cat((y_val_pred, output), dim=0)
-                y_val_true = torch.cat((y_val_true, target), dim=0)
-        val_loss = self.loss_fn(y_val_pred, y_val_true).item()
+                self.y_val_pred = torch.cat((self.y_val_pred, output), dim=0)
+                self.y_val_true = torch.cat((self.y_val_true, target), dim=0)
+        val_loss = self.loss_fn(self.y_val_pred, self.y_val_true).item()
         return val_loss
 
     def predict(self) -> Tuple:
@@ -389,12 +410,16 @@ class EnsembleTrainer(BaseTrainer):
     Arguments
     --------------
     num_jobs: int, the number of jobs to run in parallel
+    stop_criterion: str, the criterion to use for early stopping, default to 'loss'
+        stop_criterion = 'loss': early stopping based on the validation loss
+        stop_criterion = 'auc': early stopping based on the validation AUC, only applicable for binary classification
     """
     def __init__(self, model: List, data_generators: Dict, optim: str, optim_params: Dict, lr_scheduler: torch.optim.lr_scheduler._LRScheduler = None, 
                  num_jobs: int = None, model_save_dir: str = None, model_name: str = 'model.pt', loss_fn: torch.nn.modules.loss._Loss = torch.nn.MSELoss(), 
                  device: torch.device = torch.device('cpu'), validation: bool = True, epochs: int = 100, patience: int = 10, verbose: int = 0, 
-                 logger: logging.Logger = logging.getLogger("Trainer")) -> None:
+                 stop_criterion: str = 'loss', logger: logging.Logger = logging.getLogger("Trainer")) -> None:
         self.num_jobs: int = num_jobs
+        self.stop_criterion: str = stop_criterion
         super(EnsembleTrainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, model_save_dir, model_name, 
                                               loss_fn, device, validation, epochs, patience, verbose, logger)
         self._validate_inputs()
@@ -445,7 +470,7 @@ class EnsembleTrainer(BaseTrainer):
         Train the ensemble of ICK models
         """
         # initialize the early stopping counter
-        best_loss = 1e9
+        best_loss, best_auc = 1e9, 0
         best_model_state_dict = None
         trigger_times = 0
 
@@ -473,7 +498,12 @@ class EnsembleTrainer(BaseTrainer):
                 if self.lr_scheduler is not None:
                     self.lr_scheduler.step()
                 # Early stopping
-                if val_loss > best_loss:
+                if self.stop_criterion == 'loss':
+                    early_stopping_flag = val_loss > best_loss
+                else:
+                    val_auc = roc_auc_score(self.y_val_true.cpu().numpy(), self.y_val_pred.cpu().numpy())
+                    early_stopping_flag = val_auc < best_auc
+                if early_stopping_flag:
                     trigger_times += 1
                     if trigger_times >= self.patience:
                         # Trigger early stopping and save the best ensemble
@@ -488,7 +518,10 @@ class EnsembleTrainer(BaseTrainer):
                         break
                 else:
                     trigger_times = 0
-                    best_loss = val_loss
+                    if self.stop_criterion == 'loss':
+                        best_loss = val_loss
+                    else:
+                        best_auc = val_auc
                     best_model_state_dict = {'model_'+str(i): self.model[i].state_dict() for i in range(len(self.model))}
                 # Visualize the test predictions if verbose > 0
                 if self.verbose > 0:
@@ -504,8 +537,8 @@ class EnsembleTrainer(BaseTrainer):
         """
         Evaluate the ICK ensemble model on the validation data
         """
-        y_val_pred = [torch.empty(0).to(self.device) for _ in range(len(self.model))]
-        y_val_true = torch.empty(0).to(self.device)
+        self.y_val_pred = [torch.empty(0).to(self.device) for _ in range(len(self.model))]
+        self.y_val_true = torch.empty(0).to(self.device)
 
         key = TRAIN if not self.validation else (VAL if self.data_generators[VAL] is not None else TEST)
         with torch.no_grad():
@@ -514,11 +547,11 @@ class EnsembleTrainer(BaseTrainer):
                 for batch in self.data_generators[key]:
                     data, target = self._assign_device_to_data(batch[0], batch[1])
                     output = self.model[i](data).float()
-                    y_val_pred[i] = torch.cat((y_val_pred[i], output), dim=0)
+                    self.y_val_pred[i] = torch.cat((self.y_val_pred[i], output), dim=0)
                     if i == 0:
-                        y_val_true = torch.cat((y_val_true, target), dim=0)
-        y_val_pred_mean = torch.mean(torch.stack(y_val_pred, dim=0), dim=0)
-        val_loss = self.loss_fn(y_val_pred_mean, y_val_true).item()
+                        self.y_val_true = torch.cat((self.y_val_true, target), dim=0)
+        self.y_val_pred_mean = torch.mean(torch.stack(self.y_val_pred, dim=0), dim=0)
+        val_loss = self.loss_fn(self.y_val_pred_mean, self.y_val_true).item()
         return val_loss
     
     def predict(self) -> Tuple:

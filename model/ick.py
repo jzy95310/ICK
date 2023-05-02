@@ -54,7 +54,7 @@ class ICK(nn.Module):
             self.kernels.append(eval(self.kernel_assignment[i])(**self.kernel_params[self.kernel_assignment[i]]))
         if self.num_modalities == 1 and isinstance(self.kernels[0], ImplicitNNKernel):
             self.kernels[0] = attach_single_output_dense_layer(self.kernels[0], self.kernels[0].activation, self.kernels[0].dropout_ratio)
-        if isinstance(self.kernels[0], (ImplicitNNKernel, ImplicitRFFKernel)):
+        if isinstance(self.kernels[0], (ImplicitNNKernel, ImplicitRFFKernel, ImplicitResNetKernel)):
             self.latent_feature_dim = self.kernels[0].latent_feature_dim
         elif isinstance(self.kernels[0], ImplicitNystromKernel):
             self.latent_feature_dim = self.kernels[0].num_inducing_points
@@ -148,6 +148,27 @@ class AdditiveICK(nn.Module):
                 else:
                     res += self.coeffs[i] * self.components[i](xs)
         return res
+
+class BinaryICK(ICK):
+    """
+    Class definition of the Binary Implicit Composite Kernel (ICK)
+    Here "binary" means that the inner product will be passed through a sigmoid function to get a probability,
+    which is used for binary classification
+
+    Arguments
+    --------------
+    kernel_assignment: List[str], a list of strings indicating the type of kernel to be used for each modality
+    kernel_params: Dict, a dictionary containing the parameters of the kernels
+    """
+    def __init__(self, kernel_assignment: List[str], kernel_params: Dict) -> None:
+        super(BinaryICK, self).__init__(kernel_assignment, kernel_params)
+    
+    def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
+        """
+        Forward pass of BinaryICK
+        """
+        latent_features = self.get_latent_features(x)
+        return torch.sigmoid(torch.sum(torch.prod(latent_features,dim=0),dim=1))
 
 # ########################################################################################
 # MIT License

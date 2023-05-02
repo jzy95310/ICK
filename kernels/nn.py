@@ -5,6 +5,7 @@ import numpy as np
 import itertools
 import torch
 from torch import nn
+from torchvision.models import resnet34, resnet50
 import vit_pytorch as vitorch
 from abc import ABC, abstractmethod
 from .constants import ACTIVATIONS
@@ -501,7 +502,35 @@ class ImplicitDeepViTKernel(ImplicitViTKernel):
             mlp_dim=self.mlp_dim, 
             dropout=self.dropout_ratio, 
             emb_dropout=self.emb_dropout_ratio
-        )  
+        )
+
+class ImplicitResNetKernel(nn.Module):
+    """
+    Implicit kernel implied by a ResNet
+    Reference:
+    He, Kaiming, et al. "Deep residual learning for image recognition." Proceedings of the IEEE conference on 
+    computer vision and pattern recognition. 2016.
+
+    Arguments
+    --------------
+    latent_feature_dim: int, the dimension of feature in the latent space
+    model_name: str, the name of the ResNet model, default to 'resnet50'
+    pretrained: bool, whether to use the pretrained ResNet model, default to False
+    """
+    def __init__(self, latent_feature_dim: int, model_name: str = 'resnet50', pretrained: bool = False):
+        super(ImplicitResNetKernel, self).__init__()
+        assert model_name in ['resnet34', 'resnet50'], "The model name should be either 'resnet34' or 'resnet50'."
+        self.latent_feature_dim = latent_feature_dim
+        self.model_name = model_name
+        self.pretrained = pretrained
+        self._build_layers()
+    
+    def _build_layers(self) -> None:
+        self.resnet = eval(f'{self.model_name}(pretrained={self.pretrained})')
+        self.resnet.fc = nn.Linear(self.resnet.fc.in_features, self.latent_feature_dim)
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.resnet(x)
 
 # ########################################################################################
 # MIT License
