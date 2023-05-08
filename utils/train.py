@@ -64,6 +64,8 @@ class BaseTrainer(ABC):
         if self.logger.hasHandlers():
             self.logger.handlers.clear()
         self.logger.addHandler(logging.StreamHandler(stream=sys.stdout))
+        if self.model_save_dir is not None and not os.path.exists(self.model_save_dir):
+            os.makedirs(self.model_save_dir)
         self._validate_inputs()
         self._set_optimizer()
     
