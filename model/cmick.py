@@ -12,7 +12,7 @@ class CMICK(nn.Module):
     Class definition of Causal Multi-task Implicit Composite Kernel (CMICK) model, which is mainly
     used for estimating the individualized treatment effect (ITE) in causal inference tasks. The ITE is computed as 
     E[Y1-Y0|X] where Y0 and Y1 are the outcomes of the control and treatment groups, respectively, and X is the input. 
-    Therefore, the forward pass of ICK-CMGP will return 2 outputs, one for control and one for treatment. 
+    Therefore, the forward pass of CMICK will return 2 outputs, one for control and one for treatment. 
 
     Arguments
     --------------
