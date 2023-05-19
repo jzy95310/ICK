@@ -97,8 +97,6 @@ class BaseTrainer(ABC):
             raise TypeError("loss_fn must be an instance of torch.nn.modules.loss._Loss")
         if not isinstance(self.device, torch.device):
             raise TypeError("device must be an instance of torch.device")
-        if self.stop_criterion not in ['loss', 'auc']:
-            raise ValueError("stop_criterion must be one of the following: ['loss', 'auc']")
         if not isinstance(self.logger, logging.Logger):
             raise TypeError("logger must be an instance of logging.Logger")
     
@@ -174,6 +172,8 @@ class Trainer(BaseTrainer):
     def _validate_inputs(self) -> None:
         if not isinstance(self.model, torch.nn.Module):
             raise TypeError("The model must be an instance of torch.nn.Module")
+        if self.stop_criterion not in ['loss', 'auc']:
+            raise ValueError("stop_criterion must be one of the following: ['loss', 'auc']")
         super(Trainer, self)._validate_inputs()
     
     def _train_step(self) -> Tuple:
@@ -430,6 +430,8 @@ class EnsembleTrainer(BaseTrainer):
     def _validate_inputs(self) -> None:
         if not isinstance(self.model, List):
             raise TypeError("The ensemble model must be a List.")
+        if self.stop_criterion not in ['loss', 'auc']:
+            raise ValueError("stop_criterion must be one of the following: ['loss', 'auc']")
         super(EnsembleTrainer, self)._validate_inputs()
 
     def _set_optimizer(self) -> None:
@@ -590,8 +592,9 @@ class CMICKEnsembleTrainer(EnsembleTrainer):
                  device: torch.device = torch.device('cpu'), validation: bool = True, epochs: int = 100, patience: int = 10, verbose: int = 0, treatment_index: int = 0, 
                  logger: logging.Logger = logging.getLogger("Trainer")) -> None:
         self.treatment_index = treatment_index
+        stop_criterion = 'loss'
         super(CMICKEnsembleTrainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, num_jobs, model_save_dir, model_name, 
-                                                  loss_fn, device, validation, epochs, patience, verbose, logger)
+                                                  loss_fn, device, validation, epochs, patience, verbose, stop_criterion, logger)
         self._validate_inputs()
     
     def _validate_inputs(self) -> None:
