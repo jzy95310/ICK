@@ -47,11 +47,11 @@ class JointNNTrainer(Trainer):
     def __init__(self, model: torch.nn.Module, data_generators: Dict, optim: str, optim_params: Dict,
                  lr_scheduler: torch.optim.lr_scheduler._LRScheduler = None, model_save_dir: str = None, model_name: str = 'model.pt', 
                  loss_fn: torch.nn.modules.loss._Loss = torch.nn.MSELoss(), device: torch.device = torch.device('cpu'), 
-                 validation: bool = True, epochs: int = 100, patience: int = 10, verbose: int = 0, scale_factor: float = 0.95, 
-                 logger: logging.Logger = logging.getLogger("Trainer")) -> None:
+                 validation: bool = True, epochs: int = 100, patience: int = 10, verbose: int = 0, stop_criterion: str = 'loss', 
+                 scale_factor: float = 0.95, logger: logging.Logger = logging.getLogger("Trainer")) -> None:
         self.scale_factor = scale_factor
         super(JointNNTrainer, self).__init__(model, data_generators, optim, optim_params, lr_scheduler, model_save_dir, model_name, 
-                                             loss_fn, device, validation, epochs, patience, verbose, logger)
+                                             loss_fn, device, validation, epochs, patience, verbose, stop_criterion, logger)
         self._validate_inputs()
         self._set_optimizer()
     

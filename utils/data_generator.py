@@ -42,7 +42,7 @@ class DataGenerator(Dataset):
             self.x = tuple(map(lambda item: item.reshape(-1,1).astype(self.dtype) if len(item.shape) == 1 else item.astype(self.dtype), self.x))
         else:
             self.x = self.x.reshape(-1,1).astype(self.dtype) if len(self.x.shape) == 1 else self.x.astype(self.dtype)
-        self.y = self.y.reshape(-1).astype(self.dtype)
+        self.y = self.y.squeeze().astype(self.dtype)
         assert self.x_transform is None or isinstance(self.x_transform, Callable), "x_transform must be either None or a callable function."
 
     def __len__(self) -> int:
