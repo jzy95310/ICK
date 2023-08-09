@@ -18,7 +18,8 @@ job_dict = {
     9+offset: 'env_data_experiment_ViTRF_temporal.py',
     10+offset: 'env_data_experiment_CNN_ICKy_spatiotemporal.py', 
     11+offset: 'env_data_experiment_ViT_ICKy_spatiotemporal.py', 
-    12+offset: 'env_data_experiment_DeepViT_ICKy_spatiotemporal.py'
+    12+offset: 'env_data_experiment_DeepViT_ICKy_spatiotemporal.py', 
+    13+offset: 'env_data_experiment_CNN_truncated_fourier_temporal.py'
 }
 
 if JOB_ID not in job_dict:
