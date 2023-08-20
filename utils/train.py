@@ -8,12 +8,14 @@ import os, sys
 import numpy as np
 import logging
 import time
+import inspect
 from typing import Dict, List, Tuple, Union
 from abc import ABC, abstractmethod
 from sklearn.metrics import roc_auc_score
 from .constants import *
 from .helpers import calculate_stats, plot_pred_vs_true_vals
 from .losses import *
+from kernels.nystrom import *
 from joblib import Parallel, delayed
 
 class BaseTrainer(ABC):
@@ -276,8 +278,36 @@ class Trainer(BaseTrainer):
                 self.y_val_true = torch.cat((self.y_val_true, target), dim=0)
         val_loss = self.loss_fn(self.y_val_pred, self.y_val_true).item()
         return val_loss
+    
+    def _get_uncertainty(self) -> Tuple:
+        """
+        Return the uncertainty of the predictions based on the fitted kernel parameters
+        ******************
+        Work in progress
+        ******************
+        """
+        y_test_pred_std = torch.empty(0).to(self.device)
+        self.model.eval()
+        fullargs, _, _, defaults, _, _, _ = inspect.getfullargspec(self.model.kernels[0].kernel_func)
+        kwargs = fullargs[-len(defaults):]
+        params = [x.item() for x in list(self.model.kernels[0].parameters())]
+        params_dict = {k: v for k, v in zip(kwargs, params)}
 
-    def predict(self) -> Tuple:
+        with torch.no_grad():
+            x_train = torch.tensor(self.data_generators[TRAIN].dataset.x).to(self.device)
+            K_xx = self.model.kernels[0].kernel_func(x_train, x_train, **params_dict)   # Use inducing points?
+            K_xx_inv = torch.linalg.inv(K_xx)
+            x_test = torch.tensor(self.data_generators[TEST].dataset.x).to(self.device)
+            K_tx = self.model.kernels[0].kernel_func(x_test, x_train, **params_dict)
+            K_tt = self.model.kernels[0].kernel_func(x_test, x_test, **params_dict)
+            y_test_pred_std = torch.sqrt(torch.diag(K_tt - K_tx @ K_xx_inv @ K_tx.T))
+        
+        return y_test_pred_std
+
+    def predict(self, uncertainty=False) -> Tuple:
+        if uncertainty:
+            assert len(self.model.kernels) == 1 and isinstance(self.model.kernels[0], ImplicitNystromKernel), \
+                "The uncertainty feature is only available for the ICK model with a single implicit Nystrom kernel."
         y_test_pred = torch.empty(0).to(self.device)
         y_test_true = torch.empty(0).to(self.device)
         self.model.eval()
@@ -288,7 +318,13 @@ class Trainer(BaseTrainer):
                 output = self.model(data).float()
                 y_test_pred = torch.cat((y_test_pred, output), dim=0)
                 y_test_true = torch.cat((y_test_true, target), dim=0)
-        return y_test_pred.detach().cpu().numpy(), y_test_true.detach().cpu().numpy()
+        if not uncertainty:
+            return y_test_pred.detach().cpu().numpy(), y_test_true.detach().cpu().numpy()
+        else:
+            y_test_pred_std = self._get_uncertainty()
+            lower, upper = y_test_pred - y_test_pred_std, y_test_pred + y_test_pred_std
+            return y_test_pred.detach().cpu().numpy(), y_test_true.detach().cpu().numpy(), \
+                lower.detach().cpu().numpy(), upper.detach().cpu().numpy()
 
 class VariationalBayesTrainer(BaseTrainer):
     """
