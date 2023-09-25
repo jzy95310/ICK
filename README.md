@@ -1,4 +1,6 @@
 # Implicit Composite Kernel (ICK)
+========================================
+[![arXiv](https://img.shields.io/badge/arXiv-2205.07384-b31b1b.svg)](https://arxiv.org/abs/2205.07384)
 
 This repository contains PyTorch implementation for the paper "Incorporating Prior Knowledge into Neural Networks through an Implicit Composite Kernel" [1] (ICK, currently under review) and "Estimating Causal Effect using Multi-task Deep Ensemble" [2] (CMDE, accepted by ICML 2023).
 
@@ -83,7 +85,11 @@ model = ICK(kernel_assignment, kernel_params)
 ```
 Note that here we also specify the architecture and periodic kernel parameters through the argument `kernel_params`, including the depth (`num_blocks`) and width (`num_intermediate_channels`) of the convolutional network, the filter size (`kernel_size`), and the initial values of those trainable parameters in the periodic kernel including std, period, length scale, and a white noise term. After constructing the model, we can use the `Trainer` classes in `utils.train` to fit it. Please refer to the notebook `tutorial_1d_regression.ipynb` for a more detailed tutorial of fitting ICK (as well as other variants of ICK such as variational ICK, ICK ensemble, etc.) to multi-modal data in a simple regression task. <br />
 
-### Training and Evaluation of CMDE/CMICK
+# Causal Multi-task Deep Ensemble
+======================================
+[![Conference](https://img.shields.io/badge/ICML23-Paper-blue])](https://proceedings.mlr.press/v202/jiang23c/jiang23c.pdf)
+[![arXiv](https://img.shields.io/badge/arXiv-2301.11351-b31b1b.svg)](https://arxiv.org/abs/2301.11351)
+
 CMDE/CMICK is typically used for estimating the causal effect of a binary treatment from an observational dataset. Say we have covariates $X$ with dimension of 30 and a binary treatment $T \in {0, 1}$, and we want to predict the potential outcomes $Y_0$ and $Y_1$ for both control and treatment groups using the formulation: $Y_0(X) = \alpha_H f_H(X) + \alpha_{HT} f_{HT}(X)$ and $Y_1(X) = \alpha_{HT} f_{HT}(X) + \alpha_T f_T(X)$ where $f_H$, $f_T$, and $f_{HT}$ are all dense neural networks, then we can define one of the **baselearners** in CMDE as follows:
 ```
 from model import ICK, CMICK
