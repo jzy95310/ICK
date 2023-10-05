@@ -6,7 +6,6 @@ from kernels.bnn import *
 from kernels.nn import *
 from kernels.nystrom import *
 from kernels.rff import *
-from kernels.truncated_fourier import *
 from utils.helpers import attach_single_output_dense_layer
 
 import math
