@@ -15,7 +15,7 @@ from sklearn.metrics import roc_auc_score
 from .constants import *
 from .helpers import calculate_stats, plot_pred_vs_true_vals
 from .losses import *
-from kernels.nystrom import *
+from ..kernels.nystrom import *
 from joblib import Parallel, delayed
 
 class BaseTrainer(ABC):

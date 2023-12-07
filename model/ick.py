@@ -2,11 +2,11 @@
 # SEE LICENSE STATEMENT AT THE END OF THE FILE
 
 from typing import List, Dict
-from kernels.bnn import *
-from kernels.nn import *
-from kernels.nystrom import *
-from kernels.rff import *
-from utils.helpers import attach_single_output_dense_layer
+from ..kernels.bnn import *
+from ..kernels.nn import *
+from ..kernels.nystrom import *
+from ..kernels.rff import *
+from ..utils.helpers import attach_single_output_dense_layer
 
 import math
 import torch
