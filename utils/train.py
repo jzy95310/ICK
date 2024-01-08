@@ -5,6 +5,7 @@ import torch
 import torchbnn as bnn
 
 import os, sys
+sys.path.insert(0, '..')
 import numpy as np
 import logging
 import time
@@ -15,7 +16,7 @@ from sklearn.metrics import roc_auc_score
 from .constants import *
 from .helpers import calculate_stats, plot_pred_vs_true_vals
 from .losses import *
-from ..kernels.nystrom import *
+from kernels.nystrom import *
 from joblib import Parallel, delayed
 
 class BaseTrainer(ABC):

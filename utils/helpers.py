@@ -1,7 +1,8 @@
 # helpers.py: a file containing helper functions for data processing, model creation, and training of ICK models
 # SEE LICENSE STATEMENT AT THE END OF THE FILE
 
-import os
+import os, sys
+sys.path.insert(0, '..')
 from pathlib import Path
 import numpy as np
 import pickle as pkl
@@ -14,10 +15,10 @@ from scipy import stats
 from sklearn import metrics
 from torch import nn
 from typing import Callable, Dict, Tuple, List, Union, Optional
-from ..kernels.constants import *
+from kernels.constants import *
 from .constants import *
 from .data_generator import create_ick_data_generator
-from ..kernels.nn import ImplicitConvNet2DKernel, ImplicitNNKernel
+from kernels.nn import ImplicitConvNet2DKernel, ImplicitNNKernel
 from google_drive_downloader import GoogleDriveDownloader as gdd
 
 def train_val_test_split(x: Union[List[np.ndarray], np.ndarray], y: np.ndarray, train_range: Tuple = (0.0,0.5), 
