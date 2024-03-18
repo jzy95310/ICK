@@ -1,4 +1,5 @@
 # Implicit Composite Kernel (ICK)
+[![TMLR](https://img.shields.io/badge/TMLR-Paper-blue)](https://openreview.net/pdf?id=HhjSalvWVe)
 [![arXiv](https://img.shields.io/badge/arXiv-2205.07384-b31b1b.svg)](https://arxiv.org/abs/2205.07384)
 
 This repository contains PyTorch implementation for the paper "Incorporating Prior Knowledge into Neural Networks through an Implicit Composite Kernel" [1] (ICK, currently under review) and "Estimating Causal Effect using Multi-task Deep Ensemble" [2] (CMDE, accepted by ICML 2023).
