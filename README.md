@@ -144,18 +144,22 @@ Note that we borrow the `ICK` template to define the neural networks for $f_H$, 
 ## Citation
 If you publish any materials using this repository, please include the following Bibtex citation:
 ```
-@article{jiang2022incorporating,
+@article{jiang2024incorporating,
   title={Incorporating Prior Knowledge into Neural Networks through an Implicit Composite Kernel},
-  author={Jiang, Ziyang and Zheng, Tongshu and Carlson, David},
-  journal={arXiv preprint arXiv:2205.07384},
-  year={2022}
+  author={Ziyang Jiang and Tongshu Zheng and Yiling Liu and David Carlson},
+  journal={Transactions on Machine Learning Research},
+  issn={2835-8856},
+  year={2024},
+  url={https://openreview.net/forum?id=HhjSalvWVe}
 }
 
-@article{jiang2023estimating,
-  title={Estimating Causal Effects using a Multi-task Deep Ensemble},
+@inproceedings{jiang2023estimating,
+  title={Estimating causal effects using a multi-task deep ensemble},
   author={Jiang, Ziyang and Hou, Zhuoran and Liu, Yiling and Ren, Yiman and Li, Keyu and Carlson, David},
-  journal={arXiv preprint arXiv:2301.11351},
-  year={2023}
+  booktitle={International Conference on Machine Learning},
+  pages={15023--15040},
+  year={2023},
+  organization={PMLR}
 }
 ```
 
