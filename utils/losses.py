@@ -52,6 +52,47 @@ class FactualMSELoss(_Loss):
         else:
             return factual_err
 
+class FactualMSELoss_MT(FactualMSELoss):
+    """
+    Create a criterion that measures the mean squared error (squared L2 norm) between the factual outcomes and the predicted
+    outcomes with multiple treatments.
+    """
+    def __init__(self, size_average: bool = None, reduce: bool = None, reduction: str = 'mean', regularize_var: bool = False) -> None:
+        super(FactualMSELoss_MT, self).__init__(size_average, reduce, reduction, regularize_var)
+    
+    def forward(self, prediction: torch.Tensor, target: torch.Tensor, group: torch.Tensor) -> torch.Tensor:
+        """
+        Compute the mean squared error between the factual outcomes and the predicted outcomes.
+        """
+        n_treatments = prediction.shape[-1]  # Number of treatments
+
+        # Factual error computation
+        if len(prediction.shape) >= 3:
+            mean_pred = torch.mean(prediction, dim=0)  # shape (batch_size, n_treatments)
+            factual_err = F.mse_loss(mean_pred[torch.arange(mean_pred.shape[0]), group], target, reduction=self.reduction)
+            # Counterfactual variance
+            counterfactual_var = []
+            for t in range(n_treatments):
+                mask = (group != t)
+                if mask.any():
+                    counterfactual_var.append(torch.var(prediction[:, mask, t], dim=0))
+            counterfactual_var = torch.cat(counterfactual_var) if counterfactual_var else torch.tensor(0.0, device=prediction.device)
+        else:
+            # Single estimator case
+            factual_err = F.mse_loss(prediction[torch.arange(prediction.shape[0]), group], target, reduction=self.reduction)
+            # Counterfactual variance
+            counterfactual_var = []
+            for t in range(n_treatments):
+                mask = (group != t)
+                if mask.any():
+                    counterfactual_var.append(torch.var(prediction[mask, t]))
+            counterfactual_var = torch.stack(counterfactual_var) if counterfactual_var else torch.tensor(0.0, device=prediction.device)
+
+        if self.regularize_var:
+            return factual_err + torch.mean(counterfactual_var)
+        else:
+            return factual_err
+
 class FactualCrossEntropyLoss(_WeightedLoss):
     """
     Create a criterion that measures the cross entropy between the factual outcomes and the predicted outcomes, which is 
