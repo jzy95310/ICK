@@ -1,4 +1,5 @@
 # Implicit Composite Kernel (ICK)
+[![TMLR](https://img.shields.io/badge/TMLR-Paper-blue)](https://openreview.net/pdf?id=HhjSalvWVe)
 [![arXiv](https://img.shields.io/badge/arXiv-2205.07384-b31b1b.svg)](https://arxiv.org/abs/2205.07384)
 
 This repository contains PyTorch implementation for the paper "Incorporating Prior Knowledge into Neural Networks through an Implicit Composite Kernel" [1] (ICK, currently under review) and "Estimating Causal Effect using Multi-task Deep Ensemble" [2] (CMDE, accepted by ICML 2023).
@@ -143,24 +144,28 @@ Note that we borrow the `ICK` template to define the neural networks for $f_H$, 
 ## Citation
 If you publish any materials using this repository, please include the following Bibtex citation:
 ```
-@article{jiang2022incorporating,
+@article{jiang2024incorporating,
   title={Incorporating Prior Knowledge into Neural Networks through an Implicit Composite Kernel},
-  author={Jiang, Ziyang and Zheng, Tongshu and Carlson, David},
-  journal={arXiv preprint arXiv:2205.07384},
-  year={2022}
+  author={Ziyang Jiang and Tongshu Zheng and Yiling Liu and David Carlson},
+  journal={Transactions on Machine Learning Research},
+  issn={2835-8856},
+  year={2024},
+  url={https://openreview.net/forum?id=HhjSalvWVe}
 }
 
-@article{jiang2023estimating,
-  title={Estimating Causal Effects using a Multi-task Deep Ensemble},
+@inproceedings{jiang2023estimating,
+  title={Estimating causal effects using a multi-task deep ensemble},
   author={Jiang, Ziyang and Hou, Zhuoran and Liu, Yiling and Ren, Yiman and Li, Keyu and Carlson, David},
-  journal={arXiv preprint arXiv:2301.11351},
-  year={2023}
+  booktitle={International Conference on Machine Learning},
+  pages={15023--15040},
+  year={2023},
+  organization={PMLR}
 }
 ```
 
 ## References
 [1]. Jiang, Ziyang, Tongshu Zheng, and David Carlson. "Incorporating Prior Knowledge into Neural Networks through an Implicit Composite Kernel." arXiv preprint arXiv:2205.07384 (2022). <br />
-[2]. Jiang, Ziyang, et al. "Estimating Causal Effects using a Multi-task Deep Ensemble." arXiv preprint arXiv:2301.11351 (2023). <br />
+[2]. Jiang, Ziyang, et al. "Estimating causal effects using a multi-task deep ensemble." International Conference on Machine Learning. PMLR, 2023. <br />
 [3]. Zhou, Tianhui, William E. Carson IV, and David Carlson. "Estimating potential outcome distributions with collaborating causal networks." arXiv preprint arXiv:2110.01664 (2021). <br />
 [4]. Louizos, Christos, et al. "Causal effect inference with deep latent-variable models." Advances in neural information processing systems 30 (2017). <br />
 [5]. Shalit, Uri, Fredrik D. Johansson, and David Sontag. "Estimating individual treatment effect: generalization bounds and algorithms." International Conference on Machine Learning. PMLR, 2017. <br />
