@@ -52,19 +52,22 @@ class FactualMSELoss(_Loss):
         else:
             return factual_err
 
-class FactualMSELoss_MT(FactualMSELoss):
+class FactualMSELoss_MT(_Loss):
     """
     Create a criterion that measures the mean squared error (squared L2 norm) between the factual outcomes and the predicted
     outcomes with multiple treatments.
     """
-    def __init__(self, size_average: bool = None, reduce: bool = None, reduction: str = 'mean', regularize_var: bool = False) -> None:
-        super(FactualMSELoss_MT, self).__init__(size_average, reduce, reduction, regularize_var)
+    __constants__ = ['reduction']
+
+    def __init__(self, size_average: bool = None, reduce: bool = None, reduction: str = 'mean') -> None:
+        super(FactualMSELoss_MT, self).__init__(size_average, reduce, reduction)
     
     def forward(self, prediction: torch.Tensor, target: torch.Tensor, group: torch.Tensor) -> torch.Tensor:
         """
         Compute the mean squared error between the factual outcomes and the predicted outcomes.
         """
         n_treatments = prediction.shape[-1]  # Number of treatments
+        group = group.int()
 
         # Factual error computation
         if len(prediction.shape) >= 3:
@@ -88,10 +91,7 @@ class FactualMSELoss_MT(FactualMSELoss):
                     counterfactual_var.append(torch.var(prediction[mask, t]))
             counterfactual_var = torch.stack(counterfactual_var) if counterfactual_var else torch.tensor(0.0, device=prediction.device)
 
-        if self.regularize_var:
-            return factual_err + torch.mean(counterfactual_var)
-        else:
-            return factual_err
+        return factual_err
 
 class FactualCrossEntropyLoss(_WeightedLoss):
     """

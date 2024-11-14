@@ -636,7 +636,8 @@ class CMICKEnsembleTrainer(EnsembleTrainer):
     
     def _validate_inputs(self) -> None:
         assert self.treatment_index >= 0, "Treatment index must be a non-negative integer."
-        assert isinstance(self.loss_fn, (FactualMSELoss, FactualCrossEntropyLoss)), "Loss function must be either FactualMSELoss or FactualCrossEntropyLoss."
+        assert isinstance(self.loss_fn, (FactualMSELoss, FactualCrossEntropyLoss, FactualMSELoss_MT)), \
+            "Loss function must be either FactualMSELoss, FactualMSELoss_MT, or FactualCrossEntropyLoss."
         super(CMICKEnsembleTrainer, self)._validate_inputs()
 
     def _set_optimizer(self) -> None:
@@ -652,12 +653,13 @@ class CMICKEnsembleTrainer(EnsembleTrainer):
         y_train_pred = [torch.empty(0).to(self.device) for _ in range(len(self.model))]
         y_train_true = torch.empty(0).to(self.device)
         groups = torch.empty(0).to(self.device)
+        n_treatments = self.model[0].n_treatments if hasattr(self.model[0], "n_treatments") else 2
         for _, batch in enumerate(self.data_generators[TRAIN]):
             data, target = self._assign_device_to_data(batch[0], batch[1])
             data, group = data[:self.treatment_index] + data[self.treatment_index+1:], torch.squeeze(data[self.treatment_index])
             if len(group.shape) == 0 or all(group == 0) or all(group == 1):
                 continue
-            predictions = torch.empty(0, data[0].shape[0], 2).to(self.device)
+            predictions = torch.empty(0, data[0].shape[0], n_treatments).to(self.device)
             # Zero the gradients
             self.optimizer.zero_grad()
             for i in range(len(self.model)):
