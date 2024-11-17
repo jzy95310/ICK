@@ -125,7 +125,7 @@ def main(args):
         treatment_col='binary_treatment',
         normalize=True
     )
-    print("AUUC for Y (visit):", auuc)
+    print("AUUC for Y (click):", auuc)
 
 
 if __name__ == '__main__':
@@ -133,13 +133,13 @@ if __name__ == '__main__':
     arg_parser.add_argument('--train_batch_size', type=int, default=512)
     arg_parser.add_argument('--nn_width', type=int, default=512)
     arg_parser.add_argument('--nn_depth', type=int, default=1)
-    arg_parser.add_argument('--nn_activation', type=str, default='softplus')
+    arg_parser.add_argument('--nn_activation', type=str, default='relu')
     arg_parser.add_argument('--n_estimators', type=int, default=1)
     arg_parser.add_argument('--optim', type=str, default='sgd')
-    arg_parser.add_argument('--lr', type=float, default=1e-10)
+    arg_parser.add_argument('--lr', type=float, default=1e-5)
     arg_parser.add_argument('--momentum', type=float, default=0.99)
     arg_parser.add_argument('--weight_decay', type=float, default=1e-4)
-    arg_parser.add_argument('--epochs', type=int, default=1000)
+    arg_parser.add_argument('--epochs', type=int, default=150)
     arg_parser.add_argument('--patience', type=int, default=10)
     args = arg_parser.parse_known_args()[0]
     main(args)
